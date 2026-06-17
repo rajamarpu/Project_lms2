@@ -17,7 +17,7 @@ Before running the application, ensure your `.env` files are correctly configure
 #### `backend/.env`
 Create a `.env` in the `backend/` directory. For Supabase, use the Postgres connection string from **Project Settings -> Database** and keep `?sslmode=require` on the URL:
 ```env
-PORT=5000
+PORT=5001
 DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?sslmode=require"
 JWT_SECRET=your_super_secret_jwt_key_here
 JWT_EXPIRES_IN=7d
@@ -62,7 +62,7 @@ npm run dev
 ```
 
 - **Frontend**: http://localhost:3000
-- **Backend APIs**: http://localhost:5000/api-docs
+- **Backend APIs**: http://localhost:5001/api-docs
 - **Admin Portal**: run `npm run admin`, then open http://localhost:3001
 
 To launch the entire stack concurrently (Frontend, Backend, and Admin), run:

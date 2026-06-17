@@ -51,11 +51,21 @@ npm run install:all
 ```
 
 ### Running Locally
-To launch the entire stack concurrently (Frontend, Backend, and Admin), run this command from the root directory:
+From the root directory, start the backend API in one terminal:
+```bash
+npm run backend
+```
+
+Then start the learner frontend in another terminal:
 ```bash
 npm run dev
 ```
 
-- **Frontend**: http://localhost:8081
+- **Frontend**: http://localhost:3000
 - **Backend APIs**: http://localhost:5000/api-docs
-- **Admin Portal**: http://localhost:5173
+- **Admin Portal**: run `npm run admin`, then open http://localhost:3001
+
+To launch the entire stack concurrently (Frontend, Backend, and Admin), run:
+```bash
+npm run dev:all
+```

@@ -47,7 +47,11 @@ const Register = () => {
         navigate("/dashboard");
       }
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Registration failed. Please try again.");
+      if (!err?.response) {
+        setError("Backend is not running. Open another terminal and run: npm.cmd run backend");
+      } else {
+        setError(err?.response?.data?.error || "Registration failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

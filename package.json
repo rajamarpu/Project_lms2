@@ -10,6 +10,7 @@
     "dev:backend": "npm run backend",
     "dev:frontend": "npm run learner",
     "dev:admin": "npm run admin",
+    "ports:stop": "node scripts/stop-ports.js",
     "install:all": "npm install && cd backend && npm install && cd ../course-compass-main && npm install && cd ../admin && npm install"
   },
   "devDependencies": {

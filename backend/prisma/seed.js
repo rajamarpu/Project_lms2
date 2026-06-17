@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const { prisma } = require('../src/config/db');
 
 const img = (seed) => `https://images.unsplash.com/${seed}?auto=format&fit=crop&w=800&q=80`;
@@ -204,6 +205,7 @@ const seedLearningPaths = [
 
 async function main() {
   console.log('Seeding database...');
+  const hashedPassword = await bcrypt.hash('password123', 10);
   
   // 1. Create Instructors
   const instructors = {};
@@ -216,7 +218,7 @@ async function main() {
           data: {
             name: c.instructorName,
             email,
-            password: 'password123',
+            password: hashedPassword,
             role: 'instructor',
             status: 'approved'
           }

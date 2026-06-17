@@ -8,7 +8,8 @@ import logo from '../../assets/logo.webp';
 import { auth, googleProvider } from '../../firebase-config';
 import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
 
-const allowedAdmins = ["admin@gmail.com"]; // add more approved admin emails here
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const allowedAdmins = ["admin@gmail.com"]; // Firebase fallback admins
 
 const techIcons = [
   // Left side
@@ -36,6 +37,10 @@ const AdminLogin = () => {
   const navigate = useNavigate();
 
   const handleGoogleLogin = async () => {
+    if (API_URL) {
+      setError('Google sign-in is not connected to this Supabase-backed login yet.');
+      return;
+    }
     try {
       const result = await signInWithPopup(auth, googleProvider);
       console.log('Google sign-in result:', result);
@@ -65,6 +70,29 @@ const AdminLogin = () => {
   e.preventDefault();
   setError('');
   try {
+    if (API_URL) {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Login failed. Please try again.');
+      }
+
+      if (data.user?.role !== 'admin') {
+        setError('Unauthorized: This email is not an admin account.');
+        return;
+      }
+
+      localStorage.setItem('role', 'admin');
+      localStorage.setItem('lms_token', data.token);
+      localStorage.setItem('lms_user', JSON.stringify(data.user));
+      navigate('/dashboard/admin');
+      return;
+    }
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     if (allowedAdmins.includes(user.email)) {

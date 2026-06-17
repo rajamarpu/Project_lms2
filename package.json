@@ -1,0 +1,14 @@
+{
+  "name": "lms-root",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:admin\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd course-compass-main && npm run dev",
+    "dev:admin": "cd admin && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../course-compass-main && npm install && cd ../admin && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

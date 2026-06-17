@@ -4,6 +4,12 @@ const { PrismaPg } = require('@prisma/adapter-pg');
 const { readReplicas } = require('@prisma/extension-read-replicas');
 const logger = require('../utils/logger');
 
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL is missing. Set backend/.env DATABASE_URL to your Supabase Postgres connection string, including ?sslmode=require.'
+  );
+}
+
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 
 // Base prisma client

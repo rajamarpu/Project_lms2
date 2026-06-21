@@ -1,22 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Award, Calendar, ExternalLink, Loader2, ArrowRight } from "lucide-react";
-import { courseApi } from "@/api/course.api";
+import { platformApi } from "@/api/platform.api";
 import { useAuth } from "@/store/AuthContext";
 
 export const CertificatesList = () => {
   const { user } = useAuth();
-  const [certificates, setCertificates] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<Array<{ id: string; verificationId: string; issuedAt?: string; courseId: string; course: { title: string } }>>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchCertificates = async () => {
       try {
-        const res = await courseApi.getMyEnrollments();
-        const enrollments = res.data?.data || [];
-        // Filter for completed and approved courses
-        const completed = enrollments.filter((e: any) => e.progress === 100 && e.certificateApproved);
-        setCertificates(completed);
+        const res = await platformApi.certificates();
+        setCertificates(res.data?.data || []);
       } catch (error) {
         console.error("Failed to fetch certificates:", error);
       } finally {
@@ -76,7 +73,7 @@ export const CertificatesList = () => {
                 <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary via-background to-background"></div>
                 <Award className="w-12 h-12 text-primary mb-3 drop-shadow-sm" />
                 <h4 className="font-display font-bold text-lg leading-tight z-10 text-foreground">{cert.course.title}</h4>
-                <p className="text-xs text-muted-foreground mt-2 z-10 font-mono">ID: {cert.id.substring(0, 8)}...</p>
+                <p className="text-xs text-muted-foreground mt-2 z-10 font-mono">ID: {cert.verificationId}</p>
               </div>
               
               <div className="p-6 flex flex-col flex-1">
@@ -87,7 +84,7 @@ export const CertificatesList = () => {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
                   <Calendar className="w-4 h-4" />
                   <span>
-                    Issued: {new Date(cert.updatedAt).toLocaleDateString()}
+                    Issued: {cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString() : 'Pending'}
                   </span>
                 </div>
                 

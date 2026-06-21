@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { MdEmail, MdPhone, MdPhotoCamera } from 'react-icons/md';
 import FloatingInput from '../FloatingInput';
@@ -84,7 +83,6 @@ const ProfileSection = ({ profile, onUpdate }) => {
           label="Role"
           value={profile.role}
           disabled
-          onChange={() => {}}
         />
       </div>
     </div>

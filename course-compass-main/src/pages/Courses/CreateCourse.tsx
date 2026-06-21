@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen, Sparkles, PlusCircle, ImageOff, CheckCircle2, Loader2 } from "lucide-react";
 import { courseApi } from "@/api/course.api";
 import { useAuth } from "@/store/AuthContext";
+import { apiErrorMessage } from "@/utils/apiError";
 
 // removed celebrities array
 const levels = ["Beginner", "Intermediate", "Advanced"];
@@ -52,10 +53,10 @@ const CreateCourse = () => {
 
     setIsLoading(true);
     try {
-      await courseApi.createCourse({ ...form, generateAI });
+      await courseApi.createCourse({ ...form, generateAI, status: "approved" });
       navigate("/courses"); // Redirect to courses list upon success
-    } catch (err: any) {
-      setError(err?.response?.data?.error || "Failed to create course. Please try again.");
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, "Failed to create course. Please try again."));
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +136,7 @@ const CreateCourse = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground/80">Price ($)</label>
+              <label className="text-sm font-medium text-foreground/80">Price (INR)</label>
               <input
                 type="number"
                 name="price"

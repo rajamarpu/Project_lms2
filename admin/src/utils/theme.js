@@ -4,10 +4,8 @@ export function getStoredTheme() {
   if (typeof window === 'undefined') return 'dark';
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === 'light' || stored === 'dark') return stored;
-  if (stored === 'system') {
-    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  }
-  return 'dark';
+  if (stored === 'system') return 'system';
+  return 'system';
 }
 
 export function applyTheme(theme) {

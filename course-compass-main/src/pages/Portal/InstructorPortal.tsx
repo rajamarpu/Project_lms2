@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
 import { Link, Navigate } from "react-router-dom";
 import {
   PlusCircle, BookOpen, Trash2, Edit2, Loader2, CheckCircle2,
@@ -20,8 +21,11 @@ interface CourseItem {
   instructor?: { id: string; name: string };
   celebrityTeacher?: string;
   _count?: { enrollments: number };
-  lessons?: any[];
+  lessons?: { id: string; title: string; order: number; videoUrl?: string }[];
 }
+
+const apiError = (error: unknown, fallback: string) =>
+  axios.isAxiosError(error) ? error.response?.data?.error || fallback : fallback;
 
 // ─── Small confirm modal ──────────────────────────────────────────────────────
 const ConfirmModal = ({
@@ -92,12 +96,9 @@ const InstructorPortal = () => {
   const [lessonLoading, setLessonLoading] = useState(false);
 
   // ── Guard ──────────────────────────────────────────────────────────────────
-  if (user?.role !== "admin") {
-    return <Navigate to="/" replace />;
-  }
-
   // ── Fetch courses ──────────────────────────────────────────────────────────
   const fetchCourses = useCallback(async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
       const res = await courseApi.getAllCourses();
@@ -108,8 +109,8 @@ const InstructorPortal = () => {
           ? all
           : all; // Admin sees all by default in this view, though they can manage anything
       setCourses(filtered);
-      if (!lessonForm.courseId && filtered.length > 0) {
-        setLessonForm((f) => ({ ...f, courseId: filtered[0].id }));
+      if (filtered.length > 0) {
+        setLessonForm((f) => f.courseId ? f : ({ ...f, courseId: filtered[0].id }));
       }
 
       // Fetch revenue
@@ -134,9 +135,13 @@ const InstructorPortal = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user.id, user.role]);
+  }, [toast, user]);
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
+
+  if (user?.role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
 
   // ── Delete course ──────────────────────────────────────────────────────────
   const handleDelete = async () => {
@@ -147,8 +152,8 @@ const InstructorPortal = () => {
       toast({ title: "Course deleted", description: `"${deleteTarget.title}" was removed.` });
       setCourses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
       setDeleteTarget(null);
-    } catch (err: any) {
-      toast({ title: "Delete failed", description: err?.response?.data?.error || "Something went wrong.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Delete failed", description: apiError(err, "Something went wrong."), variant: "destructive" });
     } finally {
       setDeleteLoading(false);
     }
@@ -172,8 +177,8 @@ const InstructorPortal = () => {
       toast({ title: "Lesson added! ✅", description: `"${lessonForm.title}" added successfully.` });
       setLessonForm((f) => ({ ...f, title: "", content: "", videoUrl: "", order: f.order + 1 }));
       fetchCourses(); // refresh lesson counts
-    } catch (err: any) {
-      toast({ title: "Failed to add lesson", description: err?.response?.data?.error || "Something went wrong.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Failed to add lesson", description: apiError(err, "Something went wrong."), variant: "destructive" });
     } finally {
       setLessonLoading(false);
     }
@@ -473,7 +478,7 @@ const InstructorPortal = () => {
                       <p className="text-xs text-muted-foreground">No lessons yet. Add your first one!</p>
                     ) : (
                       <ul className="space-y-1.5 max-h-32 overflow-y-auto">
-                        {lessons.map((l: any, i: number) => (
+                        {lessons.map((l, i: number) => (
                           <li key={l.id} className="flex items-center gap-2 text-xs text-muted-foreground">
                             <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] flex items-center justify-center shrink-0 font-semibold">
                               {l.order ?? i + 1}

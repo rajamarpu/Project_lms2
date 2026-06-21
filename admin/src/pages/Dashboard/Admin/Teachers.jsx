@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { exportToCSV } from '../../../utils/export';
 
@@ -12,6 +12,7 @@ import TeacherDrawer from '../../../components/admin/teachers/TeacherDrawer';
 import TeacherProfileView from '../../../components/admin/teachers/TeacherProfileView';
 import InviteTeacherModal from '../../../components/admin/teachers/InviteTeacherModal';
 import { loadTeachers } from '../../../utils/teacherUtils';
+import { publishLearnerNotification } from '../../../utils/learnerNotifications';
 
 const Teachers = () => {
   const [teachers, setTeachers] = useState(loadTeachers);
@@ -72,6 +73,7 @@ const Teachers = () => {
       },
       ...prev,
     ]);
+    publishLearnerNotification({ title: 'New instructor joined', message: `${form.name} is now teaching on UptoSkills.`, type: 'Instructor', href: '/courses' });
   };
 
   const handleEditSave = (form) => {

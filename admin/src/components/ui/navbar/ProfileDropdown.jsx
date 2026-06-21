@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -81,8 +81,7 @@ const MENU_ITEMS = [
   {
     label: 'Activity Log',
     icon: MdHistory,
-    path: '/dashboard/admin/settings?tab=platform',
-    placeholder: true,
+    path: '/dashboard/admin/activity-logs',
     iconColor: '#06B6D4',
     iconBg: 'rgba(6,182,212,0.18)',
   },
@@ -153,11 +152,6 @@ const ProfileDropdown = ({ onToast }) => {
 
   const handleNav = (item) => {
     close();
-    if (item.placeholder) {
-      onToast?.('Activity log is coming soon.');
-      navigate(item.path);
-      return;
-    }
     navigate(item.path);
   };
 
@@ -168,6 +162,8 @@ const ProfileDropdown = ({ onToast }) => {
 
   const handleLogout = () => {
     localStorage.removeItem('role');
+    localStorage.removeItem('lms_token');
+    localStorage.removeItem('lms_user');
     close();
     navigate('/admin-login');
   };

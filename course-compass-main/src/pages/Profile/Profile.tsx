@@ -3,6 +3,7 @@ import { useAuth } from "@/store/AuthContext";
 import { profileApi } from "@/api/profile.api";
 import { User, Lock, Save, Mail, Edit3, Camera, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { apiErrorMessage } from "@/utils/apiError";
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -35,8 +36,8 @@ const Profile = () => {
       const res = await profileApi.updateProfile({ name, bio });
       updateUser({ name: res.data.data.name, bio: res.data.data.bio });
       toast.success("Profile updated successfully");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Failed to update profile");
+    } catch (error: unknown) {
+      toast.error(apiErrorMessage(error, "Failed to update profile"));
     } finally {
       setIsSavingInfo(false);
     }
@@ -64,8 +65,8 @@ const Profile = () => {
       const res = await profileApi.updateAvatar(formData);
       updateUser({ avatar: res.data.avatarUrl });
       toast.success("Profile picture updated");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Failed to update profile picture");
+    } catch (error: unknown) {
+      toast.error(apiErrorMessage(error, "Failed to update profile picture"));
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -89,8 +90,8 @@ const Profile = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Failed to update password");
+    } catch (error: unknown) {
+      toast.error(apiErrorMessage(error, "Failed to update password"));
     } finally {
       setIsSavingPassword(false);
     }

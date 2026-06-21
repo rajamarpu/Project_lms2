@@ -15,6 +15,16 @@ exports.enrollInCourse = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Course not found' });
     }
 
+    const isPublished = course.status === 'approved' || (course.status === 'scheduled' && course.scheduledAt && course.scheduledAt <= new Date());
+    if (!isPublished) {
+      return res.status(404).json({ success: false, error: 'Course not found' });
+    }
+
+    if (course.price > 0) {
+      const payment = await prisma.billingRecord.findFirst({ where: { userId, courseId, status: 'paid' } });
+      if (!payment) return res.status(402).json({ success: false, error: 'A verified payment is required before enrollment' });
+    }
+
     // Check if already enrolled
     const existingEnrollment = await prisma.enrollment.findUnique({
       where: {
@@ -134,6 +144,11 @@ exports.completeLesson = async (req, res, next) => {
 
     if (!enrollment) {
       return res.status(404).json({ success: false, error: 'Enrollment not found' });
+    }
+
+    const lessonBelongsToCourse = enrollment.course.lessons.some((lesson) => lesson.id === lessonId);
+    if (!lessonBelongsToCourse) {
+      return res.status(404).json({ success: false, error: 'Lesson not found in this course' });
     }
 
     // Check if already completed this lesson
@@ -280,4 +295,22 @@ exports.updateEnrollmentMentor = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+exports.updateResumePosition = async (req, res, next) => {
+  try {
+    const { courseId } = req.params;
+    const { lessonId, positionSeconds = 0 } = req.body;
+    const lesson = await prisma.lesson.findFirst({ where: { id: lessonId, courseId } });
+    if (!lesson) return res.status(404).json({ success: false, error: 'Lesson not found in this course' });
+    const enrollment = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: req.user.id, courseId } } });
+    if (!enrollment) return res.status(404).json({ success: false, error: 'Enrollment not found' });
+    const safePosition = Math.min(24 * 60 * 60, Math.max(0, Math.floor(Number(positionSeconds) || 0)));
+    const data = await prisma.$transaction(async (tx) => {
+      const updated = await tx.enrollment.update({ where: { id: enrollment.id }, data: { lastLessonId: lesson.id, lastPositionSeconds: safePosition, lastAccessedAt: new Date() } });
+      await tx.learningEvent.create({ data: { userId: req.user.id, courseId, lessonId: lesson.id, type: 'lesson_view', metadata: { positionSeconds: safePosition } } });
+      return updated;
+    });
+    res.json({ success: true, data });
+  } catch (error) { next(error); }
 };

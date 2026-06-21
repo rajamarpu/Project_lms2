@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdClose } from 'react-icons/md';
 import CourseDrawer from '../../../components/admin/courses/CourseDrawer';
@@ -14,6 +14,7 @@ import {
   computeRevenue,
 } from '../../../utils/courseUtils';
 import { exportToCSV } from '../../../utils/export';
+import { publishLearnerNotification } from '../../../utils/learnerNotifications';
 
 const Courses = () => {
   const [courses, setCourses] = useState(loadCourses);
@@ -81,6 +82,7 @@ const Courses = () => {
   };
 
   const handleSaveCourse = (savedCourse) => {
+    const isUpdate = Boolean(selectedCourse);
     setCourses((prev) => {
       const normalized = normalizeCourse(
         savedCourse,
@@ -93,6 +95,12 @@ const Courses = () => {
       return [normalized, ...prev];
     });
     showNotice(selectedCourse ? 'Course updated.' : 'Course created.');
+    publishLearnerNotification({
+      title: isUpdate ? 'Course content updated' : 'New course available',
+      message: `${savedCourse.title} ${isUpdate ? 'has new course content.' : 'is now available to explore.'}`,
+      type: 'Course',
+      href: `/courses/${savedCourse.id}`,
+    });
   };
 
   const handleClone = (course) => {

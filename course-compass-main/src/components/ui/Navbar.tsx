@@ -1,11 +1,16 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { GraduationCap, Menu, X, LayoutGrid, Shield } from "lucide-react";
+import { Bell, Menu, X, LayoutGrid, Shield, Settings } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/store/AuthContext";
 
 const links = [
   { to: "/", label: "Home" },
   { to: "/courses", label: "Courses" },
+  { to: "/learning-paths", label: "Learning Paths" },
+  { to: "/community", label: "Community" },
+  { to: "/live-sessions", label: "Live" },
+  { to: "/ai-tutors", label: "AI Tutors" },
+  { to: "/questions", label: "Practice" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/certificates", label: "Certificates" },
 ];
@@ -21,6 +26,7 @@ export const Navbar = () => {
   };
 
   const isStaff = user?.role === "admin";
+  const isInstructor = user?.role === "instructor" || isStaff;
   const hiddenForStaff = ["/certificates", "/dashboard", "/learning-paths"];
   const filteredLinks = links.filter(l => !(isStaff && hiddenForStaff.includes(l.to)));
 
@@ -31,7 +37,7 @@ export const Navbar = () => {
           <img src="/logo.webp" alt="UptoSkills Logo" className="h-10 w-auto" />
         </NavLink>
 
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden lg:flex items-center gap-5">
           {filteredLinks.map((l) => (
             <NavLink
               key={l.to}
@@ -45,7 +51,7 @@ export const Navbar = () => {
             </NavLink>
           ))}
           {/* Portal link — admins only */}
-          {user?.role === "admin" && (
+          {isInstructor && (
             <NavLink
               to="/portal"
               className={({ isActive }) =>
@@ -59,23 +65,21 @@ export const Navbar = () => {
           )}
           
           {/* Admin Portal link */}
-          {user?.role === "admin" && (
-            <NavLink
-              to="/admin"
-              className={({ isActive }) =>
-                `text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  isActive ? "text-primary" : "text-destructive/80 hover:text-destructive"
-                }`
-              }
+          {isStaff && (
+            <a
+              href={import.meta.env.VITE_ADMIN_URL || "http://localhost:3001/admin-login"}
+              className="text-sm font-medium transition-colors flex items-center gap-1.5 text-destructive/80 hover:text-destructive"
             >
               <Shield className="w-3.5 h-3.5" /> Admin
-            </NavLink>
+            </a>
           )}
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           {isAuthenticated && user ? (
             <div className="flex items-center gap-4">
+              <NavLink to="/notifications" aria-label="Notifications" className="text-muted-foreground hover:text-primary"><Bell className="h-4 w-4" /></NavLink>
+              <NavLink to="/settings" aria-label="Settings" className="text-muted-foreground hover:text-primary"><Settings className="h-4 w-4" /></NavLink>
               <NavLink to="/profile" className="text-sm font-medium hover:text-primary transition-colors">
                 Hi, {user.name.split(" ")[0]}
               </NavLink>
@@ -93,13 +97,13 @@ export const Navbar = () => {
           )}
         </div>
 
-        <button className="md:hidden text-foreground" onClick={() => setOpen(!open)} aria-label="Menu">
+        <button className="lg:hidden text-foreground" onClick={() => setOpen(!open)} aria-label="Menu">
           {open ? <X /> : <Menu />}
         </button>
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-border bg-background animate-fade-in">
+        <div className="lg:hidden border-t border-border bg-background animate-fade-in">
           <div className="container py-4 flex flex-col gap-3">
             {filteredLinks.map((l) => (
               <NavLink
@@ -114,7 +118,7 @@ export const Navbar = () => {
                 {l.label}
               </NavLink>
             ))}
-            {user?.role === "admin" && (
+            {isInstructor && (
               <NavLink
                 to="/portal"
                 onClick={() => setOpen(false)}
@@ -125,20 +129,19 @@ export const Navbar = () => {
                 <LayoutGrid className="w-3.5 h-3.5" /> Portal
               </NavLink>
             )}
-            {user?.role === "admin" && (
-              <NavLink
-                to="/admin"
-                onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  `text-sm py-2 flex items-center gap-1.5 ${isActive ? "text-primary" : "text-destructive/80"}`
-                }
+            {isStaff && (
+              <a
+                href={import.meta.env.VITE_ADMIN_URL || "http://localhost:3001/admin-login"}
+                className="text-sm py-2 flex items-center gap-1.5 text-destructive/80"
               >
                 <Shield className="w-3.5 h-3.5" /> Admin
-              </NavLink>
+              </a>
             )}
             <div className="border-t border-border my-2" />
             {isAuthenticated && user ? (
               <>
+                <NavLink to="/notifications" onClick={() => setOpen(false)} className="text-sm py-2 text-muted-foreground">Notifications</NavLink>
+                <NavLink to="/settings" onClick={() => setOpen(false)} className="text-sm py-2 text-muted-foreground">Settings</NavLink>
                 <NavLink to="/profile" onClick={() => setOpen(false)} className="text-sm py-2 font-medium hover:text-primary transition-colors">
                   Hi, {user.name}
                 </NavLink>

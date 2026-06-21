@@ -20,7 +20,14 @@ setupSwagger(app);
 app.use(compression());
 
 // HTTP Request Logging
-app.use(pinoHttp({ logger }));
+app.use(pinoHttp({
+  logger,
+  genReqId: (req, res) => {
+    const id = req.headers['x-request-id'] || require('crypto').randomUUID();
+    res.setHeader('X-Request-Id', id);
+    return id;
+  },
+}));
 
 // Set security HTTP headers
 app.use(helmet());
@@ -58,8 +65,10 @@ app.use(cors({
     // allow requests with no origin (mobile apps, curl, etc.)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
+    } else if (process.env.NODE_ENV !== 'production') {
+      callback(null, true);
     } else {
-      callback(null, true); // be permissive in dev
+      callback(new Error('Origin is not allowed by CORS'));
     }
   },
   credentials: true
@@ -77,6 +86,8 @@ const userRoutesV1 = require('./routes/v1/users.routes');
 const adminRoutesV1 = require('./routes/v1/admin.routes');
 const profileRoutesV1 = require('./routes/v1/profile.routes');
 const uploadRoutesV1 = require('./routes/v1/upload.routes');
+const platformRoutesV1 = require('./routes/v1/platform.routes');
+const parityRoutesV1 = require('./routes/v1/parity.routes');
 
 // Mount v1 Routes
 app.use('/api/v1/auth', authRoutesV1);
@@ -86,6 +97,8 @@ app.use('/api/v1/users', userRoutesV1);
 app.use('/api/v1/admin', adminRoutesV1);
 app.use('/api/v1/profile', profileRoutesV1);
 app.use('/api/v1/upload', uploadRoutesV1);
+app.use('/api/v1/platform', platformRoutesV1);
+app.use('/api/v1/features', parityRoutesV1);
 
 // Maintain backward compatibility by aliasing /api to v1 routes
 app.use('/api/auth', authRoutesV1);
@@ -95,6 +108,8 @@ app.use('/api/users', userRoutesV1);
 app.use('/api/admin', adminRoutesV1);
 app.use('/api/profile', profileRoutesV1);
 app.use('/api/upload', uploadRoutesV1);
+app.use('/api/platform', platformRoutesV1);
+app.use('/api/features', parityRoutesV1);
 
 // Default Route
 app.get('/', (req, res) => {

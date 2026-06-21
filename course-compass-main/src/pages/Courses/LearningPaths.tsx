@@ -3,8 +3,11 @@ import { Link } from "react-router-dom";
 import { BookOpen, Clock, Target, ArrowRight, Loader2, Layers, CheckCircle2 } from "lucide-react";
 import { courseApi } from "@/api/course.api";
 
+type PathCourse = { id: string; title: string; duration?: string; level?: string };
+type LearningPath = { id: string; slug?: string; title: string; description: string; duration?: string; color?: string; courses?: PathCourse[] };
+
 const LearningPaths = () => {
-  const [paths, setPaths] = useState<any[]>([]);
+  const [paths, setPaths] = useState<LearningPath[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -67,7 +70,7 @@ const LearningPaths = () => {
 
                 {/* Node flow */}
                 <div className="space-y-2 mb-10 flex-1">
-                  {path.courses?.map((c: any, i: number) => (
+                  {path.courses?.map((c, i) => (
                     <div key={c.id} className="flex gap-4">
                       <div className="flex flex-col items-center">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 ${

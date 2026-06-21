@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Star, Users, School, TrendingUp, Clock, BookOpen } from "lucide-react";
+import { Star, Users, School, TrendingUp, Clock, BookOpen, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 
 const FALLBACK = "https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&q=80";
@@ -11,7 +11,24 @@ const levelStyles: Record<string, { bg: string; border: string; color: string }>
   Expert: { bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.35)', color: '#F59E0B' },
 };
 
-const Stat = ({ icon: Icon, label, value, accent }: any) => (
+export interface CourseView {
+  id: string | number;
+  title: string;
+  category: string;
+  level: string;
+  thumbnail?: string;
+  duration?: string;
+  price?: number;
+  rating?: number;
+  progress?: number;
+  celebrityTeacher?: string;
+  instructor?: string | { name?: string };
+  lessons?: number | unknown[];
+  enrollments?: number;
+  _count?: { enrollments?: number };
+}
+
+const Stat = ({ icon: Icon, label, value, accent }: { icon: LucideIcon; label: string; value: string | number; accent: string }) => (
   <div className="rounded-xl py-2 px-2 border bg-background/40 border-border/50 backdrop-blur-sm transition-colors hover:bg-background/80">
     <div className="flex items-center gap-1 mb-0.5">
       <Icon size={12} style={{ color: accent }} />
@@ -21,14 +38,14 @@ const Stat = ({ icon: Icon, label, value, accent }: any) => (
   </div>
 );
 
-export const CourseCard = ({ course, index = 0 }: { course: Course; index?: number }) => {
+export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: number }) => {
   const [imgError, setImgError] = useState(false);
   const lvl = levelStyles[course.level] || levelStyles.Beginner;
   const thumbnail = !imgError && course.thumbnail ? course.thumbnail : FALLBACK;
 
   const fullStars = Math.floor(course.rating || 0);
   const showProgress = course.progress !== undefined;
-  const progressVal = course.progress || 94; // fallback fake completion rate for UI
+  const progressVal = course.progress ?? 0;
 
   return (
     <Link
@@ -102,13 +119,13 @@ export const CourseCard = ({ course, index = 0 }: { course: Course; index?: numb
             />
             <Stat
               icon={TrendingUp}
-              label="Completion"
-              value={`${progressVal}%`}
+              label={showProgress ? "Progress" : "Level"}
+              value={showProgress ? `${progressVal}%` : course.level}
               accent="#06B6D4"
             />
           </div>
 
-          <div className="mt-1">
+          {showProgress && <div className="mt-1">
              <div className="w-full h-1.5 rounded-full bg-muted/50 overflow-hidden shadow-inner">
                <div
                  className="h-full rounded-full transition-all duration-1000 ease-out"
@@ -118,7 +135,7 @@ export const CourseCard = ({ course, index = 0 }: { course: Course; index?: numb
                  }}
                />
              </div>
-          </div>
+          </div>}
         </div>
       </article>
     </Link>

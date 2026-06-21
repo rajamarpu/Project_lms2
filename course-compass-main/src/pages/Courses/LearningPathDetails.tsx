@@ -2,10 +2,14 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowRight, Clock, Layers, CheckCircle2, ChevronLeft, Map, PlayCircle } from "lucide-react";
 import { courseApi } from "@/api/course.api";
+import type { CourseView } from "@/components/common/CourseCard";
+
+type CourseRecord = CourseView & { description?: string; celebrityTeacher?: string; instructor?: { name?: string }; _count?: { enrollments?: number } };
+type DisplayCourse = Omit<CourseView, "instructor" | "lessons" | "enrollments"> & { description?: string; instructor: string; lessons: number; enrollments: string };
 
 const LearningPathDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<DisplayCourse[]>([]);
   const [categoryName, setCategoryName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -16,7 +20,7 @@ const LearningPathDetails = () => {
         const dbCourses = res.data.data;
         
         // Map backend courses
-        const mapped = dbCourses.map((c: any) => ({
+        const mapped = (dbCourses as CourseRecord[]).map((c) => ({
           id: c.id,
           title: c.title,
           description: c.description,

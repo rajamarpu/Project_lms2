@@ -1,15 +1,17 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { prisma } = require('../config/db');
-const { generateToken } = require('../utils/jwt.util');
 const { addEmailJob } = require('../queues/email.queue');
+const { issueSession, rotateSession, revokeCurrentSession } = require('../services/session.service');
+const { isStrongPassword } = require('../utils/platformRules');
 
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, password } = req.body;
+    const email = req.body.email.trim().toLowerCase();
 
     // Check if user already exists
     const userExists = await prisma.user.findUnique({ where: { email } });
@@ -45,7 +47,7 @@ exports.register = async (req, res, next) => {
       });
     }
 
-    const token = generateToken(user.id, user.role);
+    const token = await issueSession(user, req, res);
 
     res.status(201).json({
       success: true,
@@ -67,7 +69,8 @@ exports.register = async (req, res, next) => {
 // @access  Public
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = req.body.email.trim().toLowerCase();
 
     if (!email || !password) {
       return res.status(400).json({ success: false, error: 'Please provide an email and password' });
@@ -98,7 +101,7 @@ exports.login = async (req, res, next) => {
       return res.status(403).json({ success: false, error: 'Your account has been suspended. Please contact support.' });
     }
 
-    const token = generateToken(user.id, user.role);
+    const token = await issueSession(user, req, res);
 
     res.status(200).json({
       success: true,
@@ -120,7 +123,31 @@ exports.login = async (req, res, next) => {
 // @access  Private
 exports.logout = async (req, res, next) => {
   try {
-    // JWT logout is handled client-side by discarding the token
+    await revokeCurrentSession(req, res);
+    res.status(200).json({ success: true, data: {} });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.refresh = async (req, res, next) => {
+  try {
+    const session = await rotateSession(req, res);
+    if (!session) return res.status(401).json({ success: false, error: 'Session expired. Please sign in again.' });
+    res.status(200).json({
+      success: true,
+      token: session.token,
+      user: { id: session.user.id, name: session.user.name, email: session.user.email, role: session.user.role },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.logoutAll = async (req, res, next) => {
+  try {
+    await prisma.session.updateMany({ where: { userId: req.user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    await revokeCurrentSession(req, res);
     res.status(200).json({ success: true, data: {} });
   } catch (error) {
     next(error);
@@ -162,7 +189,7 @@ exports.forgotPassword = async (req, res, next) => {
     const secret = process.env.JWT_SECRET + user.password;
     const token = jwt.sign({ email: user.email, id: user.id }, secret, { expiresIn: '15m' });
 
-    const resetLink = `${process.env.CLIENT_URL || 'http://localhost:8081'}/reset-password/${user.id}/${token}`;
+    const resetLink = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${user.id}/${token}`;
     
     // Dispatch async email job
     await addEmailJob({
@@ -171,11 +198,12 @@ exports.forgotPassword = async (req, res, next) => {
       body: `You requested a password reset. Click the link below to reset it:\n\n${resetLink}\n\nThis link is valid for 15 minutes.`
     });
 
-    res.status(200).json({ 
+    const response = {
       success: true, 
-      message: 'If that email is registered, a reset link has been sent.',
-      resetLink // Keeping for testing, though in production you'd remove this
-    });
+      message: 'If that email is registered, a reset link has been sent.'
+    };
+    if (process.env.NODE_ENV !== 'production') response.resetLink = resetLink;
+    res.status(200).json(response);
   } catch (error) {
     next(error);
   }
@@ -191,6 +219,9 @@ exports.resetPassword = async (req, res, next) => {
 
     if (!password) {
       return res.status(400).json({ success: false, error: 'Please provide a new password' });
+    }
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({ success: false, error: 'Password must be 8–128 characters and include uppercase, lowercase, and a number' });
     }
 
     const user = await prisma.user.findUnique({ where: { id } });
@@ -213,6 +244,7 @@ exports.resetPassword = async (req, res, next) => {
       where: { id },
       data: { password: hashedPassword }
     });
+    await prisma.session.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
 
     res.status(200).json({ success: true, message: 'Password has been reset successfully' });
   } catch (error) {

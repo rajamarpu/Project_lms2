@@ -10,7 +10,10 @@ const validate = (schema) => async (req, res, next) => {
     return next();
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMessage = error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
+      const issues = error.issues || error.errors || [];
+      const errorMessage = issues
+        .map(err => `${err.path.join('.')}: ${err.message}`)
+        .join(', ') || 'Invalid request data';
       return res.status(400).json({ success: false, error: errorMessage });
     }
     return res.status(400).json({ success: false, error: 'Validation Error' });

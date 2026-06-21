@@ -16,9 +16,13 @@ import ResetPassword from "@/pages/Auth/ResetPassword";
 import InstructorPortal from "@/pages/Portal/InstructorPortal";
 import ManageCourse from "@/pages/Portal/ManageCourse";
 import Profile from "@/pages/Profile/Profile";
-import Certificate from "@/pages/Certificate/Certificate";
 import CertificatesList from "@/pages/Certificate/CertificatesList";
 import { AuthProvider } from "@/store/AuthContext";
+import { ProtectedRoute } from "@/routes/ProtectedRoute";
+import { Features, Notifications, Settings, Support } from "@/pages/InfoPages";
+import LearningWork from "@/pages/Courses/LearningWork";
+import VerifyCertificate from "@/pages/Certificate/VerifyCertificate";
+import { AITutors, Community, CommunityTopic, LiveSessions, QuestionPractice } from "@/pages/FeaturePages";
 
 export const AppRouter = () => {
   return (
@@ -33,17 +37,32 @@ export const AppRouter = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:id/:token" element={<ResetPassword />} />
             <Route path="/courses" element={<Courses />} />
-            <Route path="/courses/new" element={<CreateCourse />} />
             <Route path="/courses/:id" element={<CourseDetails />} />
-            <Route path="/learn/:id" element={<CoursePlayer />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/features" element={<Features />} />
+            <Route path="/support" element={<Support />} />
             <Route path="/learning-paths" element={<LearningPaths />} />
             <Route path="/learning-paths/:id" element={<LearningPathDetails />} />
-            <Route path="/portal" element={<InstructorPortal />} />
-            <Route path="/portal/courses/:id" element={<ManageCourse />} />
-            <Route path="/certificates" element={<CertificatesList />} />
-            <Route path="/certificate/:courseId" element={<Certificate />} />
+            <Route path="/verify/:verificationId" element={<VerifyCertificate />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/learn/:id" element={<CoursePlayer />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/certificates" element={<CertificatesList />} />
+              <Route path="/certificate/:courseId" element={<CertificatesList />} />
+              <Route path="/courses/:courseId/work" element={<LearningWork />} />
+              <Route path="/community" element={<Community />} />
+              <Route path="/community/:topicId" element={<CommunityTopic />} />
+              <Route path="/live-sessions" element={<LiveSessions />} />
+              <Route path="/ai-tutors" element={<AITutors />} />
+              <Route path="/questions" element={<QuestionPractice />} />
+            </Route>
+            <Route element={<ProtectedRoute roles={["admin"]} />}>
+              <Route path="/courses/new" element={<CreateCourse />} />
+              <Route path="/portal" element={<InstructorPortal />} />
+              <Route path="/portal/courses/:id" element={<ManageCourse />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<NotFound />} />

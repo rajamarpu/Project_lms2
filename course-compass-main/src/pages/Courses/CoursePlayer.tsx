@@ -1,16 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowLeft, PlayCircle, FileText, CheckCircle, Loader2, ChevronRight, Lock, Award, Check, Clock } from "lucide-react";
 import { courseApi } from "@/api/course.api";
 import { useAuth } from "@/store/AuthContext";
 import { toast } from "sonner";
 
+type Lesson = { id: string; title: string; content?: string; videoUrl?: string; order: number };
+type PlayerCourse = { id: string; title: string; lessons: Lesson[] };
+type PlayerEnrollment = { progress: number; certificateApproved: boolean; mentor?: string; lastLessonId?: string; completedLessons: Array<{ id: string }> };
+
 export default function CoursePlayer() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   
-  const [course, setCourse] = useState<any>(null);
-  const [enrollment, setEnrollment] = useState<any>(null);
+  const [course, setCourse] = useState<PlayerCourse | null>(null);
+  const [enrollment, setEnrollment] = useState<PlayerEnrollment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
@@ -24,7 +29,7 @@ export default function CoursePlayer() {
   const [updatingMentor, setUpdatingMentor] = useState(false);
   const celebrities = ["Virat Kohli", "Salman Khan", "Narendra Modi", "Sachin Tendulkar", "Hardik Pandya", "Virtual Mentor"];
 
-  const fetchEnrollment = async () => {
+  const fetchEnrollment = useCallback(async (): Promise<PlayerEnrollment | null> => {
     try {
       const res = await courseApi.getEnrollmentByCourse(id!);
       setEnrollment(res.data.data);
@@ -32,7 +37,7 @@ export default function CoursePlayer() {
     } catch (e) {
       return null;
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,7 +45,7 @@ export default function CoursePlayer() {
         // Fetch course details
         const courseRes = await courseApi.getCourseById(id!);
         const c = courseRes.data.data;
-        c.lessons = [...(c.lessons || [])].sort((a: any, b: any) => a.order - b.order);
+        c.lessons = [...(c.lessons || [])].sort((a: Lesson, b: Lesson) => a.order - b.order);
         setCourse(c);
 
         // Fetch enrollments to verify access
@@ -49,6 +54,10 @@ export default function CoursePlayer() {
         } else {
           const enr = await fetchEnrollment();
           setIsEnrolled(!!enr);
+          if (enr?.lastLessonId) {
+            const resumeIndex = c.lessons.findIndex((lesson: { id: string }) => lesson.id === enr.lastLessonId);
+            if (resumeIndex >= 0) setActiveLessonIndex(resumeIndex);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -58,7 +67,7 @@ export default function CoursePlayer() {
     };
     
     if (id) fetchData();
-  }, [id, user]);
+  }, [fetchEnrollment, id, user]);
 
   const handleMarkComplete = async () => {
     if (!enrollment || !activeLesson) return;
@@ -74,10 +83,12 @@ export default function CoursePlayer() {
       
       // Auto-advance to next lesson if available
       if (activeLessonIndex < course.lessons.length - 1) {
-        setActiveLessonIndex(prev => prev + 1);
+        const nextIndex = activeLessonIndex + 1;
+        setActiveLessonIndex(nextIndex);
+        courseApi.updateResumePosition(id!, course.lessons[nextIndex].id).catch(() => {});
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to mark lesson as complete");
+    } catch (err: unknown) {
+      toast.error((axios.isAxiosError(err) && err.response?.data?.error) || "Failed to mark lesson as complete");
     } finally {
       setIsMarkingComplete(false);
     }
@@ -88,11 +99,11 @@ export default function CoursePlayer() {
     try {
       setUpdatingMentor(true);
       await courseApi.updateEnrollmentMentor(id!, selectedMentor);
-      setEnrollment((prev: any) => prev ? { ...prev, mentor: selectedMentor } : prev);
+      setEnrollment((prev) => prev ? { ...prev, mentor: selectedMentor } : prev);
       toast.success(`Mentor changed to ${selectedMentor}!`);
       setMentorChangeOpen(false);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to change mentor");
+    } catch (err: unknown) {
+      toast.error((axios.isAxiosError(err) && err.response?.data?.error) || "Failed to change mentor");
     } finally {
       setUpdatingMentor(false);
     }
@@ -122,7 +133,7 @@ export default function CoursePlayer() {
   }
 
   const activeLesson = course.lessons[activeLessonIndex];
-  const completedLessonIds = new Set(enrollment?.completedLessons?.map((l: any) => l.id) || []);
+  const completedLessonIds = new Set(enrollment?.completedLessons?.map((lesson) => lesson.id) || []);
   const isCurrentCompleted = completedLessonIds.has(activeLesson?.id);
   const isFullyCompleted = enrollment?.progress === 100;
   
@@ -169,6 +180,9 @@ export default function CoursePlayer() {
         
         {enrollment && (
           <div className="flex items-center gap-4">
+            <Link to={`/courses/${id}/work`} className="hidden rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 sm:inline-flex">
+              Course work
+            </Link>
             <div className="text-sm font-medium">
               Progress: <span className="text-primary">{enrollment.progress}%</span>
             </div>
@@ -292,14 +306,14 @@ export default function CoursePlayer() {
                 No lessons available yet.
               </div>
             ) : (
-              course.lessons.map((lesson: any, i: number) => {
+              course.lessons.map((lesson, i: number) => {
                 const isActive = activeLessonIndex === i;
                 const isCompleted = completedLessonIds.has(lesson.id);
                 
                 return (
                   <button
                     key={lesson.id}
-                    onClick={() => setActiveLessonIndex(i)}
+                    onClick={() => { setActiveLessonIndex(i); if (user?.role !== 'admin') courseApi.updateResumePosition(id!, lesson.id).catch(() => {}); }}
                     className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition-colors ${
                       isActive ? "bg-primary/10 border border-primary/30" : "hover:bg-muted/40 border border-transparent"
                     }`}

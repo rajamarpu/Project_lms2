@@ -1,0 +1,44 @@
+const router = require('express').Router();
+const controller = require('../../controllers/platform.controller');
+const { protect, authorize } = require('../../middlewares/auth.middleware');
+
+router.get('/certificates/verify/:verificationId', controller.verifyCertificate);
+router.get('/reviews/:courseId', controller.getReviews);
+router.get('/announcements', controller.listAnnouncements);
+
+router.use(protect);
+router.get('/notifications', controller.getNotifications);
+router.put('/notifications/read-all', controller.readAllNotifications);
+router.put('/notifications/:id/read', controller.readNotification);
+router.get('/preferences', controller.getPreferences);
+router.put('/preferences', controller.updatePreferences);
+router.get('/bookmarks', controller.getBookmarks);
+router.put('/bookmarks/:courseId', controller.toggleBookmark);
+router.put('/reviews/:courseId', controller.upsertReview);
+router.put('/admin/reviews/:id', authorize('admin'), controller.moderateReview);
+router.get('/courses/:courseId/assessments', controller.listAssessments);
+router.post('/courses/:courseId/assessments', authorize('admin'), controller.createAssessment);
+router.post('/assessments/:id/submit', controller.submitAssessment);
+router.delete('/assessments/:id', authorize('admin'), controller.deleteAssessment);
+router.get('/courses/:courseId/assignments', controller.listAssignments);
+router.post('/courses/:courseId/assignments', authorize('admin'), controller.createAssignment);
+router.post('/assignments/:id/submit', controller.submitAssignment);
+router.delete('/assignments/:id', authorize('admin'), controller.deleteAssignment);
+router.get('/assignments/:id/submissions', authorize('admin'), controller.listAssignmentSubmissions);
+router.put('/submissions/:id/grade', authorize('admin'), controller.gradeSubmission);
+router.get('/courses/:courseId/my-work', controller.getMyCourseWork);
+router.get('/certificates', controller.getCertificates);
+router.post('/certificates/enrollments/:enrollmentId/issue', authorize('admin'), controller.issueCertificate);
+router.put('/certificates/:id/revoke', authorize('admin'), controller.revokeCertificate);
+router.post('/admin/notifications', authorize('admin'), controller.createNotification);
+router.post('/admin/announcements', authorize('admin'), controller.createAnnouncement);
+router.get('/support-tickets', controller.listTickets);
+router.post('/support-tickets', controller.createTicket);
+router.post('/support-tickets/:id/messages', controller.addTicketMessage);
+router.put('/support-tickets/:id', authorize('admin'), controller.updateTicket);
+router.get('/admin/audit-logs', authorize('admin'), controller.getAuditLogs);
+router.get('/admin/analytics', authorize('admin'), controller.getAnalytics);
+router.get('/admin/operations/:kind', authorize('admin'), controller.getAdminOperations);
+router.get('/admin/search', authorize('admin'), controller.globalSearch);
+
+module.exports = router;

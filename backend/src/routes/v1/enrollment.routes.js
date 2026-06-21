@@ -5,7 +5,8 @@ const {
   getEnrollmentByCourse,
   completeLesson,
   unenroll,
-  updateEnrollmentMentor
+  updateEnrollmentMentor,
+  updateResumePosition
 } = require('../../controllers/enrollment.controller');
 
 const { protect } = require('../../middlewares/auth.middleware');
@@ -24,6 +25,9 @@ router.route('/:courseId')
 
 router.route('/:courseId/mentor')
   .put(updateEnrollmentMentor);
+
+router.route('/:courseId/resume')
+  .put(updateResumePosition);
 
 router.route('/:courseId/lessons/:lessonId')
   .put(completeLesson);

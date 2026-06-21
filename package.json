@@ -12,6 +12,13 @@
     "dev:admin": "npm run admin",
     "ports:stop": "node scripts/stop-ports.js",
     "install:all": "npm install && cd backend && npm install && cd ../course-compass-main && npm install && cd ../admin && npm install"
+    ,"build": "npm --prefix course-compass-main run build && npm --prefix admin run build"
+    ,"lint": "npm --prefix course-compass-main run lint && npm --prefix admin run lint"
+    ,"test:backend": "npm --prefix backend test"
+    ,"test:learner": "npm --prefix course-compass-main test -- --pool=threads"
+    ,"test:admin": "npm --prefix admin test -- --pool=threads"
+    ,"typecheck": "npm --prefix course-compass-main exec tsc -- --noEmit -p course-compass-main/tsconfig.app.json"
+    ,"prisma:validate": "npm --prefix backend run prisma:validate"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

@@ -1,5 +1,7 @@
 const { prisma } = require('../config/db');
 const { clearCache } = require('../middlewares/cache.middleware');
+const { safePage } = require('../utils/platformRules');
+const { audit } = require('../services/audit.service');
 
 // @desc    Get all courses
 // @route   GET /api/courses
@@ -8,26 +10,19 @@ exports.getCourses = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', search, category, level } = req.query;
 
-    const pageNumber = parseInt(page, 10);
-    const limitNumber = parseInt(limit, 10);
-    const skip = (pageNumber - 1) * limitNumber;
+    const { page: pageNumber, limit: limitNumber, skip, orderBy } = safePage(req.query, ['createdAt', 'title', 'rating', 'price']);
 
-    const where = { status: 'approved' };
+    const where = { AND: [{ OR: [{ status: 'approved' }, { status: 'scheduled', scheduledAt: { lte: new Date() } }] }] };
 
     if (category) where.category = category;
     if (level) where.level = level;
 
     if (search) {
-      where.OR = [
+      where.AND.push({ OR: [
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
         { celebrityTeacher: { contains: search, mode: 'insensitive' } }
-      ];
-    }
-
-    const orderBy = {};
-    if (sortBy) {
-      orderBy[sortBy] = sortOrder === 'asc' ? 'asc' : 'desc';
+      ] });
     }
 
     const [courses, total] = await Promise.all([
@@ -78,7 +73,8 @@ exports.getCourse = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Course not found' });
     }
     // Only admins and the course instructor can view non-approved courses
-    if (course.status !== 'approved') {
+    const isPublished = course.status === 'approved' || (course.status === 'scheduled' && course.scheduledAt && course.scheduledAt <= new Date());
+    if (!isPublished) {
       const isOwner = req.user && course.instructorId === req.user.id;
       const isAdmin = req.user && req.user.role === 'admin';
       if (!isOwner && !isAdmin) {
@@ -100,6 +96,7 @@ exports.createCourse = async (req, res, next) => {
       return res.status(403).json({ success: false, error: 'Only admins can create and generate courses' });
     }
     const { title, description, category, level, thumbnail, celebrityTeacher, price, duration, rating, outcomes, xp, gradient, icon, status, generateAI } = req.body;
+    const publishNow = status === 'approved';
     const course = await prisma.course.create({
       data: {
         title,
@@ -115,7 +112,8 @@ exports.createCourse = async (req, res, next) => {
         xp: xp || '1000 XP',
         gradient: gradient || 'from-blue-600 via-blue-500 to-cyan-400',
         icon: icon || '🤖',
-        status: status || 'approved',
+        status: publishNow ? 'approved' : 'draft',
+        publishedAt: publishNow ? new Date() : null,
         instructorId: req.user.id
       }
     });
@@ -145,6 +143,7 @@ exports.createCourse = async (req, res, next) => {
 
     // Invalidate course cache
     await clearCache('cache:/api/courses');
+    await audit(req, publishNow ? 'course.create.publish' : 'course.create.draft', 'Course', course.id, null, { title: course.title, status: course.status });
     res.status(201).json({ success: true, data: course });
   } catch (error) {
     next(error);
@@ -165,7 +164,8 @@ exports.updateCourse = async (req, res, next) => {
       return res.status(403).json({ success: false, error: 'Not authorized to update this course. Admin only.' });
     }
 
-    const dataToUpdate = { ...req.body };
+    const allowedFields = ['title', 'description', 'category', 'level', 'thumbnail', 'celebrityTeacher', 'price', 'duration', 'rating', 'outcomes', 'xp', 'gradient', 'icon'];
+    const dataToUpdate = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowedFields.includes(key)));
     if (dataToUpdate.price !== undefined) {
       dataToUpdate.price = parseFloat(dataToUpdate.price) || 0;
     }
@@ -381,4 +381,51 @@ exports.generateLessonsAI = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+exports.duplicateCourse = async (req, res, next) => {
+  try {
+    const source = await prisma.course.findUnique({ where: { id: req.params.id }, include: { lessons: { orderBy: { order: 'asc' } } } });
+    if (!source) return res.status(404).json({ success: false, error: 'Course not found' });
+    const copy = await prisma.$transaction(async (tx) => tx.course.create({ data: {
+      title: `${source.title} (Copy)`, description: source.description, category: source.category, level: source.level,
+      price: source.price, thumbnail: source.thumbnail, celebrityTeacher: source.celebrityTeacher, duration: source.duration,
+      rating: source.rating, outcomes: source.outcomes, xp: source.xp, gradient: source.gradient, icon: source.icon,
+      status: 'draft', instructorId: source.instructorId,
+      lessons: { create: source.lessons.map((lesson) => ({ title: lesson.title, content: lesson.content, videoUrl: lesson.videoUrl, order: lesson.order, type: lesson.type, durationSeconds: lesson.durationSeconds, resources: lesson.resources, transcript: lesson.transcript })) },
+    }, include: { lessons: true } }));
+    await clearCache('cache:/api/courses');
+    await audit(req, 'course.duplicate', 'Course', copy.id, { sourceId: source.id }, { title: copy.title });
+    res.status(201).json({ success: true, data: copy });
+  } catch (error) { next(error); }
+};
+
+exports.updateLesson = async (req, res, next) => {
+  try {
+    const lesson = await prisma.lesson.findFirst({ where: { id: req.params.lessonId, courseId: req.params.courseId } });
+    if (!lesson) return res.status(404).json({ success: false, error: 'Lesson not found' });
+    const allowed = ['title', 'content', 'videoUrl', 'type', 'durationSeconds', 'resources', 'transcript'];
+    const data = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
+    if (data.title !== undefined && !String(data.title).trim()) return res.status(400).json({ success: false, error: 'Lesson title cannot be empty' });
+    const updated = await prisma.lesson.update({ where: { id: lesson.id }, data });
+    await clearCache('cache:/api/courses');
+    await audit(req, 'lesson.update', 'Lesson', lesson.id, lesson, updated);
+    res.json({ success: true, data: updated });
+  } catch (error) { next(error); }
+};
+
+exports.reorderLessons = async (req, res, next) => {
+  try {
+    const orderedIds = req.body.lessonIds;
+    if (!Array.isArray(orderedIds) || !orderedIds.length || new Set(orderedIds).size !== orderedIds.length) return res.status(400).json({ success: false, error: 'A unique ordered lessonIds array is required' });
+    const lessons = await prisma.lesson.findMany({ where: { courseId: req.params.courseId }, select: { id: true } });
+    if (lessons.length !== orderedIds.length || lessons.some((lesson) => !orderedIds.includes(lesson.id))) return res.status(400).json({ success: false, error: 'lessonIds must contain every lesson in this course exactly once' });
+    await prisma.$transaction(async (tx) => {
+      for (let index = 0; index < orderedIds.length; index += 1) await tx.lesson.update({ where: { id: orderedIds[index] }, data: { order: -(index + 1) } });
+      for (let index = 0; index < orderedIds.length; index += 1) await tx.lesson.update({ where: { id: orderedIds[index] }, data: { order: index + 1 } });
+    });
+    await clearCache('cache:/api/courses');
+    await audit(req, 'lesson.reorder', 'Course', req.params.courseId, null, { lessonIds: orderedIds });
+    res.json({ success: true, data: { lessonIds: orderedIds } });
+  } catch (error) { next(error); }
 };

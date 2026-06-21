@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -11,11 +11,20 @@ import {
   LuBookOpen,
   LuChartBar,
   LuMessageSquare,
-  LuBell,
   LuSettings2,
   LuLogOut,
   LuChevronRight,
   LuChevronLeft,
+  LuBadgeCheck,
+  LuClipboardCheck,
+  LuPencilRuler,
+  LuWalletCards,
+  LuShieldCheck,
+  LuActivity,
+  LuLifeBuoy,
+  LuFileChartLine,
+  LuBell,
+  LuSparkles,
 } from 'react-icons/lu';
 
 // ── Per-item accent colour config ─────────────────────────────────────────────
@@ -28,6 +37,17 @@ const ACCENT = {
   'Reviews & Ratings':{ color: '#EC4899', rgb: '236,72,153'  },
   Notifications:      { color: '#14B8A6', rgb: '20,184,166'  },
   Settings:           { color: '#6366F1', rgb: '99,102,241'  },
+  Builder:            { color: '#F59E0B', rgb: '245,158,11'  },
+  Certificates:       { color: '#10B981', rgb: '16,185,129'  },
+  Assignments:        { color: '#3B82F6', rgb: '59,130,246'  },
+  Assessments:        { color: '#8B5CF6', rgb: '139,92,246' },
+  Billing:            { color: '#22C55E', rgb: '34,197,94'   },
+  Reports:            { color: '#06B6D4', rgb: '6,182,212'   },
+  Support:            { color: '#F97316', rgb: '249,115,22'  },
+  Governance:         { color: '#94A3B8', rgb: '148,163,184' },
+  Activity:           { color: '#EC4899', rgb: '236,72,153'  },
+  Profile:            { color: '#6366F1', rgb: '99,102,241'  },
+  'Feature Hub':      { color: '#A855F7', rgb: '168,85,247'   },
 };
 
 function SidebarTooltip({ label, children, enabled }) {
@@ -92,13 +112,24 @@ const AdminSidebar = () => {
     { name: 'Celebrity Teachers',  path: '/dashboard/admin/teachers',     icon: LuStar },
     { name: 'Courses',             path: '/dashboard/admin/courses',      icon: LuBookOpen },
     { name: 'Analytics',           path: '/dashboard/admin/analytics',    icon: LuChartBar },
+    { name: 'Feature Hub',         path: '/dashboard/admin/feature-hub',  icon: LuSparkles },
+    { name: 'Certificates',        path: '/dashboard/admin/certificates', icon: LuBadgeCheck },
+    { name: 'Assignments',         path: '/dashboard/admin/assignments',  icon: LuClipboardCheck },
+    { name: 'Assessments',         path: '/dashboard/admin/assessments',  icon: LuPencilRuler },
     { name: 'Reviews & Ratings',   path: '/dashboard/admin/reviews',      icon: LuMessageSquare },
-    { name: 'Notifications',       path: '/dashboard/admin/notifications', icon: LuBell },
+    { name: 'Notifications',      path: '/dashboard/admin/notifications', icon: LuBell },
+    { name: 'Billing',             path: '/dashboard/admin/billing',      icon: LuWalletCards },
+    { name: 'Reports',             path: '/dashboard/admin/reports',      icon: LuFileChartLine },
+    { name: 'Support',             path: '/dashboard/admin/support-tickets', icon: LuLifeBuoy },
+    { name: 'Governance',          path: '/dashboard/admin/audit-logs',   icon: LuShieldCheck },
+    { name: 'Activity',            path: '/dashboard/admin/activity-logs', icon: LuActivity },
     { name: 'Settings',            path: '/dashboard/admin/settings',     icon: LuSettings2 },
   ];
 
   const handleLogout = () => {
     localStorage.removeItem('role');
+    localStorage.removeItem('lms_token');
+    localStorage.removeItem('lms_user');
     navigate('/admin-login');
   };
 
@@ -162,6 +193,9 @@ const AdminSidebar = () => {
           const accent = ACCENT[link.name] || { color: '#8B5CF6', rgb: '139,92,246' };
           const IconComponent = link.icon;
           const isStudentsLink = link.name === 'Students';
+          const isTeachersLink = link.name === 'Celebrity Teachers';
+          const isCoursesLink = link.name === 'Courses';
+          const isGovernanceLink = link.name === 'Governance';
 
           const navItem = (
             <NavLink
@@ -170,7 +204,10 @@ const AdminSidebar = () => {
               className={({ isActive }) => {
                 const active =
                   isActive ||
-                  (isStudentsLink && location.pathname.includes('/students'));
+                  (isStudentsLink && location.pathname.includes('/students')) ||
+                  (isTeachersLink && location.pathname.includes('/teachers')) ||
+                  (isCoursesLink && location.pathname.includes('/courses/')) ||
+                  (isGovernanceLink && location.pathname.includes('/audit-logs'));
                 return [
                   'flex items-center rounded-xl transition-all duration-300 relative group',
                   collapsed ? 'justify-center px-0 py-2' : 'justify-between px-2.5 py-2',
@@ -182,7 +219,10 @@ const AdminSidebar = () => {
               style={({ isActive }) => {
                 const active =
                   isActive ||
-                  (isStudentsLink && location.pathname.includes('/students'));
+                  (isStudentsLink && location.pathname.includes('/students')) ||
+                  (isTeachersLink && location.pathname.includes('/teachers')) ||
+                  (isCoursesLink && location.pathname.includes('/courses/')) ||
+                  (isGovernanceLink && location.pathname.includes('/audit-logs'));
                 if (active) {
                   return {
                     background: `linear-gradient(135deg, rgba(${accent.rgb},0.22), rgba(${accent.rgb},0.10))`,
@@ -196,7 +236,10 @@ const AdminSidebar = () => {
               {({ isActive }) => {
                 const active =
                   isActive ||
-                  (isStudentsLink && location.pathname.includes('/students'));
+                  (isStudentsLink && location.pathname.includes('/students')) ||
+                  (isTeachersLink && location.pathname.includes('/teachers')) ||
+                  (isCoursesLink && location.pathname.includes('/courses/')) ||
+                  (isGovernanceLink && location.pathname.includes('/audit-logs'));
                 return (
                   <>
                     {active && !collapsed && (

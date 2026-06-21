@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, BookOpen, Film, Loader2, PlusCircle, Trash2,
@@ -21,6 +22,9 @@ interface CourseDetail {
   lessons: Lesson[];
   _count?: { enrollments: number };
 }
+
+const apiError = (error: unknown, fallback: string) =>
+  axios.isAxiosError(error) ? error.response?.data?.error || fallback : fallback;
 
 // ── Confirm delete modal ───────────────────────────────────────────────────────
 const ConfirmModal = ({ label, onConfirm, onCancel, loading }: {
@@ -82,10 +86,8 @@ const ManageCourse = () => {
   const [generatingAI, setGeneratingAI] = useState(false);
 
   // ── Guard ──────────────────────────────────────────────────────────────────
-  if (user?.role !== "admin") return <Navigate to="/" replace />;
-
   // ── Load course ────────────────────────────────────────────────────────────
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id) return;
     setIsLoading(true);
     try {
@@ -102,11 +104,9 @@ const ManageCourse = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id]);
 
-  useEffect(() => { load(); }, [id]);
-
-  if (notFound) return <Navigate to="/portal" replace />;
+  useEffect(() => { load(); }, [load]);
 
   // ── Save course edits ──────────────────────────────────────────────────────
   const handleSave = async (e: React.FormEvent) => {
@@ -119,8 +119,8 @@ const ManageCourse = () => {
       await courseApi.updateCourse(id!, editForm);
       toast({ title: "Course updated ✅", description: "Changes saved successfully." });
       load();
-    } catch (err: any) {
-      toast({ title: "Update failed", description: err?.response?.data?.error || "Something went wrong.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Update failed", description: apiError(err, "Something went wrong."), variant: "destructive" });
     } finally {
       setSaveLoading(false);
     }
@@ -141,8 +141,8 @@ const ManageCourse = () => {
       toast({ title: "Lesson added ✅", description: `"${lessonForm.title}" added.` });
       setLessonForm((f) => ({ title: "", content: "", videoUrl: "", order: f.order + 1 }));
       load();
-    } catch (err: any) {
-      toast({ title: "Failed to add lesson", description: err?.response?.data?.error || "Error.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Failed to add lesson", description: apiError(err, "Error."), variant: "destructive" });
     } finally {
       setLessonLoading(false);
     }
@@ -152,14 +152,17 @@ const ManageCourse = () => {
   const [deleteCourseLoading, setDeleteCourseLoading] = useState(false);
   const [showCourseDeleteModal, setShowCourseDeleteModal] = useState(false);
 
+  if (user?.role !== "admin") return <Navigate to="/" replace />;
+  if (notFound) return <Navigate to="/portal" replace />;
+
   const handleDeleteCourse = async () => {
     setDeleteCourseLoading(true);
     try {
       await courseApi.deleteCourse(id!);
       toast({ title: "Course deleted", description: "The course was successfully removed." });
       navigate("/portal");
-    } catch (err: any) {
-      toast({ title: "Delete failed", description: err?.response?.data?.error || "Error.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Delete failed", description: apiError(err, "Error."), variant: "destructive" });
     } finally {
       setDeleteCourseLoading(false);
       setShowCourseDeleteModal(false);
@@ -175,8 +178,8 @@ const ManageCourse = () => {
       toast({ title: "Lesson deleted", description: `"${deleteLesson.title}" removed.` });
       setDeleteLesson(null);
       load();
-    } catch (err: any) {
-      toast({ title: "Delete failed", description: err?.response?.data?.error || "Error.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Delete failed", description: apiError(err, "Error."), variant: "destructive" });
     } finally {
       setDeleteLessonLoading(false);
     }
@@ -188,8 +191,8 @@ const ManageCourse = () => {
       await courseApi.generateLessonsAI(id!);
       toast({ title: "Syllabus Generated ✨", description: "Lessons created by AI successfully." });
       load();
-    } catch (err: any) {
-      toast({ title: "Generation failed", description: err?.response?.data?.error || "Error.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Generation failed", description: apiError(err, "Error."), variant: "destructive" });
     } finally {
       setGeneratingAI(false);
     }

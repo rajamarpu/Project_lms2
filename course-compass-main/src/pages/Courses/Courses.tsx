@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, SlidersHorizontal, Plus } from "lucide-react";
+import { Search, SlidersHorizontal, Plus, RefreshCw } from "lucide-react";
 import { CourseCard, type CourseView } from "@/components/common/CourseCard";
 import { AppSidebar } from "@/components/ui/AppSidebar";
 import { courseApi } from "@/api/course.api";
@@ -22,6 +22,8 @@ const Courses = () => {
   
   const [dbCourses, setDbCourses] = useState<CourseView[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => { setQuery(params.get("q") ?? ""); }, [params]);
 
@@ -32,12 +34,13 @@ const Courses = () => {
         setDbCourses(res.data.data);
       } catch (err) {
         console.error("Failed to fetch courses:", err);
+        setLoadError("The course catalogue could not be loaded.");
       } finally {
         setIsLoading(false);
       }
     };
     fetchCourses();
-  }, []);
+  }, [reloadKey]);
 
   const topics = useMemo(() => {
     const allTopics = dbCourses.map((c) => c.category);
@@ -168,7 +171,7 @@ const Courses = () => {
         </button>
       </div>
 
-      <div className="grid lg:grid-cols-[280px_1fr] gap-10">
+      <div className="grid gap-6 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] lg:gap-8 xl:gap-10">
         <AppSidebar
           sortBy={sortBy}
           setSortBy={setSortBy}
@@ -186,8 +189,10 @@ const Courses = () => {
         <div className="min-w-0">
           {isLoading ? (
              <div className="flex justify-center p-20">
-               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+               <div role="status"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /><span className="sr-only">Loading courses</span></div>
              </div>
+          ) : loadError ? (
+            <div className="surface-card p-10 text-center" role="alert"><p>{loadError}</p><button type="button" className="btn-primary mt-5" onClick={() => { setLoadError(""); setIsLoading(true); setReloadKey((value) => value + 1); }}><RefreshCw className="h-4 w-4" />Retry</button></div>
           ) : filtered.length === 0 ? (
             <div className="p-16 text-center border border-border/50 rounded-2xl bg-card/30 backdrop-blur-sm">
               <p className="text-muted-foreground mb-6 text-lg">No courses found matching your filters.</p>

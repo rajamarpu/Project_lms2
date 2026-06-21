@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, Target, ArrowRight, Loader2, Layers, CheckCircle2 } from "lucide-react";
+import { Clock, ArrowRight, Layers, CheckCircle2, RefreshCw } from "lucide-react";
 import { courseApi } from "@/api/course.api";
 
 type PathCourse = { id: string; title: string; duration?: string; level?: string };
@@ -9,6 +9,8 @@ type LearningPath = { id: string; slug?: string; title: string; description: str
 const LearningPaths = () => {
   const [paths, setPaths] = useState<LearningPath[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const fetchPaths = async () => {
@@ -17,12 +19,13 @@ const LearningPaths = () => {
         setPaths(res.data.data || []);
       } catch (err) {
         console.error("Failed to fetch paths:", err);
+        setError("Learning paths could not be loaded.");
       } finally {
         setIsLoading(false);
       }
     };
     fetchPaths();
-  }, []);
+  }, [reloadKey]);
 
   return (
     <div className="container py-10 min-h-[calc(100vh-80px)]">
@@ -35,9 +38,12 @@ const LearningPaths = () => {
         <div className="flex justify-center p-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
+      ) : error ? (
+        <div className="surface-card p-12 text-center" role="alert"><p>{error}</p><button type="button" className="btn-primary mt-5" onClick={() => { setError(""); setIsLoading(true); setReloadKey((value) => value + 1); }}><RefreshCw className="h-4 w-4" />Retry</button></div>
       ) : paths.length === 0 ? (
         <div className="p-16 text-center border border-border/50 rounded-2xl bg-card/30 backdrop-blur-sm">
-          <p className="text-muted-foreground mb-6 text-lg">No learning paths available yet. Create some courses first!</p>
+          <p className="text-muted-foreground mb-6 text-lg">No learning paths are available yet. Explore individual courses while new journeys are prepared.</p>
+          <Link to="/courses" className="btn-primary">Explore courses</Link>
         </div>
       ) : (
         <div className="grid lg:grid-cols-2 gap-8">
@@ -92,7 +98,7 @@ const LearningPaths = () => {
                 </div>
 
                 <Link 
-                  to={`/paths/${path.slug}`}
+                  to={`/learning-paths/${path.id}`}
                   className="inline-flex justify-center items-center gap-2 py-3.5 mt-auto btn-primary w-full"
                 >
                   View Full Roadmap <ArrowRight className="w-4 h-4" />

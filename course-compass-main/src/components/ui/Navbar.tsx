@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Bell, Menu, X, LayoutGrid, Shield, Settings } from "lucide-react";
+import { Bell, Heart, Menu, X, LayoutGrid, Shield, Settings } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/store/AuthContext";
 
@@ -13,6 +13,7 @@ const links = [
   { to: "/questions", label: "Practice" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/certificates", label: "Certificates" },
+  { to: "/wishlist", label: "Saved" },
 ];
 
 export const Navbar = () => {
@@ -31,7 +32,8 @@ export const Navbar = () => {
   const filteredLinks = links.filter(l => !(isStaff && hiddenForStaff.includes(l.to)));
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b border-border">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-xl">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-card focus:px-4 focus:py-2">Skip to content</a>
       <div className="container flex items-center justify-between h-16">
         <NavLink to="/" className="flex items-center gap-2">
           <img src="/logo.webp" alt="UptoSkills Logo" className="h-10 w-auto" />
@@ -79,6 +81,7 @@ export const Navbar = () => {
           {isAuthenticated && user ? (
             <div className="flex items-center gap-4">
               <NavLink to="/notifications" aria-label="Notifications" className="text-muted-foreground hover:text-primary"><Bell className="h-4 w-4" /></NavLink>
+              <NavLink to="/wishlist" aria-label="Saved courses" className="text-muted-foreground hover:text-primary"><Heart className="h-4 w-4" /></NavLink>
               <NavLink to="/settings" aria-label="Settings" className="text-muted-foreground hover:text-primary"><Settings className="h-4 w-4" /></NavLink>
               <NavLink to="/profile" className="text-sm font-medium hover:text-primary transition-colors">
                 Hi, {user.name.split(" ")[0]}
@@ -97,13 +100,13 @@ export const Navbar = () => {
           )}
         </div>
 
-        <button className="lg:hidden text-foreground" onClick={() => setOpen(!open)} aria-label="Menu">
+        <button className="rounded-lg p-2 text-foreground lg:hidden" onClick={() => setOpen(!open)} aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} aria-controls="mobile-navigation">
           {open ? <X /> : <Menu />}
         </button>
       </div>
 
       {open && (
-        <div className="lg:hidden border-t border-border bg-background animate-fade-in">
+        <div id="mobile-navigation" className="border-t border-border bg-background lg:hidden animate-fade-in">
           <div className="container py-4 flex flex-col gap-3">
             {filteredLinks.map((l) => (
               <NavLink

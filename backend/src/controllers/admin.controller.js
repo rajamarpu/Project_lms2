@@ -78,7 +78,7 @@ exports.getAdminUsers = async (req, res, next) => {
         orderBy,
         skip,
         take: limitNumber,
-        select: { id: true, name: true, email: true, role: true, status: true, createdAt: true }
+        select: { id: true, name: true, email: true, avatar: true, role: true, status: true, createdAt: true }
       }),
       prisma.user.count({ where })
     ]);
@@ -101,7 +101,7 @@ exports.getAdminUsers = async (req, res, next) => {
 
 exports.createAdminUser = async (req, res, next) => {
   try {
-    const { name, email, password, role = 'user', status = 'approved' } = req.body;
+    const { name, email, password, avatar, role = 'user', status = 'approved' } = req.body;
     if (!name?.trim() || !email?.trim() || !password) return res.status(400).json({ success: false, error: 'Name, email, and temporary password are required' });
     if (!['user', 'instructor'].includes(role)) return res.status(400).json({ success: false, error: 'Only learner or instructor accounts can be created here' });
     if (!['pending', 'approved'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid initial account status' });
@@ -109,7 +109,8 @@ exports.createAdminUser = async (req, res, next) => {
     if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) return res.status(400).json({ success: false, error: 'A valid email is required' });
     const { isStrongPassword } = require('../utils/platformRules');
     if (!isStrongPassword(password)) return res.status(400).json({ success: false, error: 'Temporary password must be 8–128 characters with uppercase, lowercase, and a number' });
-    const user = await prisma.user.create({ data: { name: name.trim(), email: normalizedEmail, password: await bcrypt.hash(password, 10), role, status }, select: { id: true, name: true, email: true, role: true, status: true, createdAt: true } });
+    if (avatar && !/^\/uploads\/[a-zA-Z0-9._-]+$/.test(avatar)) return res.status(400).json({ success: false, error: 'Invalid avatar upload URL' });
+    const user = await prisma.user.create({ data: { name: name.trim(), email: normalizedEmail, password: await bcrypt.hash(password, 10), avatar: avatar || null, role, status }, select: { id: true, name: true, email: true, avatar: true, role: true, status: true, createdAt: true } });
     await audit(req, 'user.create', 'User', user.id, null, { email: user.email, role, status });
     res.status(201).json({ success: true, data: user });
   } catch (error) { next(error); }

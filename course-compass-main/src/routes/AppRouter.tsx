@@ -1,34 +1,42 @@
+import { lazy, Suspense, type ComponentType } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { MainLayout } from "@/layouts/MainLayout";
-import Home from "@/pages/Home";
-import Courses from "@/pages/Courses/Courses";
-import CourseDetails from "@/pages/Courses/CourseDetails";
-import CreateCourse from "@/pages/Courses/CreateCourse";
-import Dashboard from "@/pages/Dashboard/Dashboard";
-import LearningPaths from "@/pages/Courses/LearningPaths";
-import LearningPathDetails from "@/pages/Courses/LearningPathDetails";
-import CoursePlayer from "@/pages/Courses/CoursePlayer";
-import NotFound from "@/pages/NotFound";
-import Login from "@/pages/Auth/Login";
-import Register from "@/pages/Auth/Register";
-import ForgotPassword from "@/pages/Auth/ForgotPassword";
-import ResetPassword from "@/pages/Auth/ResetPassword";
-import InstructorPortal from "@/pages/Portal/InstructorPortal";
-import ManageCourse from "@/pages/Portal/ManageCourse";
-import Profile from "@/pages/Profile/Profile";
-import CertificatesList from "@/pages/Certificate/CertificatesList";
 import { AuthProvider } from "@/store/AuthContext";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
-import { Features, Notifications, Settings, Support } from "@/pages/InfoPages";
-import LearningWork from "@/pages/Courses/LearningWork";
-import VerifyCertificate from "@/pages/Certificate/VerifyCertificate";
-import { AITutors, Community, CommunityTopic, LiveSessions, QuestionPractice } from "@/pages/FeaturePages";
+
+const Home = lazy(() => import("@/pages/Home"));
+const Courses = lazy(() => import("@/pages/Courses/Courses"));
+const CourseDetails = lazy(() => import("@/pages/Courses/CourseDetails"));
+const CreateCourse = lazy(() => import("@/pages/Courses/CreateCourse"));
+const Dashboard = lazy(() => import("@/pages/Dashboard/Dashboard"));
+const LearningPaths = lazy(() => import("@/pages/Courses/LearningPaths"));
+const LearningPathDetails = lazy(() => import("@/pages/Courses/LearningPathDetails"));
+const CoursePlayer = lazy(() => import("@/pages/Courses/CoursePlayer"));
+const LearningWork = lazy(() => import("@/pages/Courses/LearningWork"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const Login = lazy(() => import("@/pages/Auth/Login"));
+const Register = lazy(() => import("@/pages/Auth/Register"));
+const ForgotPassword = lazy(() => import("@/pages/Auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/Auth/ResetPassword"));
+const InstructorPortal = lazy(() => import("@/pages/Portal/InstructorPortal"));
+const ManageCourse = lazy(() => import("@/pages/Portal/ManageCourse"));
+const Profile = lazy(() => import("@/pages/Profile/Profile"));
+const CertificatesList = lazy(() => import("@/pages/Certificate/CertificatesList"));
+const Certificate = lazy(() => import("@/pages/Certificate/Certificate"));
+const Wishlist = lazy(() => import("@/pages/Courses/Wishlist"));
+const VerifyCertificate = lazy(() => import("@/pages/Certificate/VerifyCertificate"));
+const infoPage = (name: string) => lazy(() => import("@/pages/InfoPages").then((module) => ({ default: module[name as keyof typeof module] as ComponentType })));
+const featurePage = (name: string) => lazy(() => import("@/pages/FeaturePages").then((module) => ({ default: module[name as keyof typeof module] as ComponentType })));
+const Features = infoPage('Features'); const Notifications = infoPage('Notifications'); const Settings = infoPage('Settings'); const Support = infoPage('Support');
+const AITutors = featurePage('AITutors'); const Community = featurePage('Community'); const CommunityTopic = featurePage('CommunityTopic'); const LiveSessions = featurePage('LiveSessions'); const QuestionPractice = featurePage('QuestionPractice');
+
+const RouteLoader = () => <div className="container grid min-h-[55vh] place-items-center" role="status" aria-live="polite"><div className="w-full max-w-4xl space-y-4"><div className="skeleton-block h-9 w-52" /><div className="skeleton-block h-24 w-full" /><div className="grid gap-4 md:grid-cols-3"><div className="skeleton-block h-56" /><div className="skeleton-block h-56" /><div className="skeleton-block h-56" /></div><span className="sr-only">Loading page</span></div></div>;
 
 export const AppRouter = () => {
   return (
     <AuthProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Routes>
+        <Suspense fallback={<RouteLoader />}><Routes>
           {/* All pages share Navbar/Footer via MainLayout */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<Home />} />
@@ -50,7 +58,8 @@ export const AppRouter = () => {
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/certificates" element={<CertificatesList />} />
-              <Route path="/certificate/:courseId" element={<CertificatesList />} />
+              <Route path="/wishlist" element={<Wishlist />} />
+              <Route path="/certificate/:courseId" element={<Certificate />} />
               <Route path="/courses/:courseId/work" element={<LearningWork />} />
               <Route path="/community" element={<Community />} />
               <Route path="/community/:topicId" element={<CommunityTopic />} />
@@ -58,7 +67,7 @@ export const AppRouter = () => {
               <Route path="/ai-tutors" element={<AITutors />} />
               <Route path="/questions" element={<QuestionPractice />} />
             </Route>
-            <Route element={<ProtectedRoute roles={["admin"]} />}>
+            <Route element={<ProtectedRoute roles={["admin", "instructor"]} />}>
               <Route path="/courses/new" element={<CreateCourse />} />
               <Route path="/portal" element={<InstructorPortal />} />
               <Route path="/portal/courses/:id" element={<ManageCourse />} />
@@ -66,7 +75,7 @@ export const AppRouter = () => {
           </Route>
 
           <Route path="*" element={<NotFound />} />
-        </Routes>
+        </Routes></Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

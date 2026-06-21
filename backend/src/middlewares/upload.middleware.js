@@ -35,4 +35,13 @@ const upload = multer({
   fileFilter: fileFilter
 });
 
+upload.image = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Invalid image type. Use JPG, PNG, GIF, or WebP.'), false);
+  }
+});
+
 module.exports = upload;

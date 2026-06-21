@@ -4,11 +4,11 @@ import { useState } from "react";
 
 const FALLBACK = "https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&q=80";
 
-const levelStyles: Record<string, { bg: string; border: string; color: string }> = {
-  Beginner: { bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.35)', color: '#10B981' },
-  Intermediate: { bg: 'rgba(59,130,246,0.15)', border: 'rgba(59,130,246,0.35)', color: '#3B82F6' },
-  Advanced: { bg: 'rgba(139,92,246,0.15)', border: 'rgba(139,92,246,0.35)', color: '#8B5CF6' },
-  Expert: { bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.35)', color: '#F59E0B' },
+const levelStyles: Record<string, { token: string }> = {
+  Beginner: { token: '--status-success' },
+  Intermediate: { token: '--status-info' },
+  Advanced: { token: '--secondary' },
+  Expert: { token: '--status-warning' },
 };
 
 export interface CourseView {
@@ -28,10 +28,10 @@ export interface CourseView {
   _count?: { enrollments?: number };
 }
 
-const Stat = ({ icon: Icon, label, value, accent }: { icon: LucideIcon; label: string; value: string | number; accent: string }) => (
+const Stat = ({ icon: Icon, label, value, token }: { icon: LucideIcon; label: string; value: string | number; token: string }) => (
   <div className="rounded-xl py-2 px-2 border bg-background/40 border-border/50 backdrop-blur-sm transition-colors hover:bg-background/80">
     <div className="flex items-center gap-1 mb-0.5">
-      <Icon size={12} style={{ color: accent }} />
+      <Icon size={12} style={{ color: `hsl(var(${token}))` }} />
       <span className="text-[10px] text-muted-foreground uppercase font-semibold">{label}</span>
     </div>
     <p className="text-sm font-bold text-foreground">{value}</p>
@@ -46,6 +46,7 @@ export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: 
   const fullStars = Math.floor(course.rating || 0);
   const showProgress = course.progress !== undefined;
   const progressVal = course.progress ?? 0;
+  const priceLabel = course.price && course.price > 0 ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(course.price) : 'Free';
 
   return (
     <Link
@@ -70,7 +71,7 @@ export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: 
           </span>
           <div className="absolute top-3 right-3 flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border bg-black/40 backdrop-blur-md border-white/10 text-white shadow-sm">
             <Clock size={12} className="text-primary" />
-            {course.duration}
+            {course.duration || `${Array.isArray(course.lessons) ? course.lessons.length : course.lessons || 0} lessons`}
           </div>
         </div>
 
@@ -78,12 +79,12 @@ export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: 
           <div className="flex items-center justify-between gap-2">
             <span
               className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border"
-              style={{ background: lvl.bg, borderColor: lvl.border, color: lvl.color }}
+              style={{ background: `hsl(var(${lvl.token}) / .12)`, borderColor: `hsl(var(${lvl.token}) / .38)`, color: `hsl(var(${lvl.token}))` }}
             >
               {course.level}
             </span>
             <span className="text-[10px] font-bold text-primary px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20">
-              {course.price && course.price > 0 ? `$${course.price.toFixed(2)}` : "Free"}
+              {priceLabel}
             </span>
           </div>
 
@@ -101,10 +102,11 @@ export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: 
                 <Star
                   key={i}
                   size={12}
-                  className={i < fullStars ? "fill-[#FBBF24] text-[#FBBF24]" : "fill-muted border-none text-muted"}
+                  className={i < fullStars ? "text-foreground" : "fill-muted border-none text-muted"}
+                  style={i < fullStars ? { fill: 'hsl(var(--status-warning))', color: 'hsl(var(--status-warning))' } : undefined}
                 />
              ))}
-             <span className="ml-1 text-xs font-semibold text-[#FBBF24]">{course.rating}</span>
+             <span className="ml-1 text-xs font-semibold" style={{ color: 'hsl(var(--status-warning))' }}>{course.rating}</span>
              <span className="ml-2 text-xs text-muted-foreground flex items-center gap-1">
                 <BookOpen size={12} /> {Array.isArray(course.lessons) ? course.lessons.length : course.lessons || 0} lessons
              </span>
@@ -115,13 +117,13 @@ export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: 
               icon={Users}
               label="Enrolled"
               value={course._count?.enrollments ?? course.enrollments ?? 0}
-              accent="#8B5CF6"
+              token="--secondary"
             />
             <Stat
               icon={TrendingUp}
               label={showProgress ? "Progress" : "Level"}
               value={showProgress ? `${progressVal}%` : course.level}
-              accent="#06B6D4"
+              token="--primary"
             />
           </div>
 
@@ -131,7 +133,7 @@ export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: 
                  className="h-full rounded-full transition-all duration-1000 ease-out"
                  style={{
                    width: `${progressVal}%`,
-                   background: `linear-gradient(90deg, #8B5CF6, #06B6D4)`,
+                   background: `linear-gradient(90deg, hsl(var(--secondary)), hsl(var(--primary)))`,
                  }}
                />
              </div>

@@ -9,6 +9,6 @@ router.use(protect);
 
 router.put('/', updateProfile);
 router.put('/password', updatePassword);
-router.put('/avatar', upload.single('avatar'), updateAvatar);
+router.put('/avatar', upload.image.single('avatar'), updateAvatar);
 
 module.exports = router;

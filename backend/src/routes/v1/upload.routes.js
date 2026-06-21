@@ -5,6 +5,6 @@ const upload = require('../../middlewares/upload.middleware');
 
 const router = express.Router();
 
-router.post('/', protect, upload.single('file'), uploadFile);
+router.post('/', protect, upload.image.single('file'), uploadFile);
 
 module.exports = router;

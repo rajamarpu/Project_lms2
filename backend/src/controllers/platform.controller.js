@@ -452,7 +452,7 @@ exports.globalSearch = async (req, res, next) => {
     ]);
     const data = [
       ...users.map((user) => ({ id: `user-${user.id}`, type: user.role === 'instructor' ? 'teacher' : 'student', category: user.role === 'instructor' ? 'Teachers' : 'Students', title: user.name, subtitle: user.email, path: user.role === 'instructor' ? `/dashboard/admin/teachers/${user.id}` : `/dashboard/admin/students/${user.id}` })),
-      ...courses.map((course) => ({ id: `course-${course.id}`, type: 'course', category: 'Courses', title: course.title, subtitle: course.category, path: `/dashboard/admin/courses/${course.id}` })),
+      ...courses.map((course) => ({ id: `course-${course.id}`, type: 'course', category: 'Courses', title: course.title, subtitle: course.category, path: `/dashboard/admin/courses/${course.id}/edit` })),
       ...certificates.map((certificate) => ({ id: `certificate-${certificate.id}`, type: 'certificate', category: 'Courses', title: certificate.user.name, subtitle: `Certified: ${certificate.course.title}`, path: '/dashboard/admin/certificates' })),
       ...payments.map((payment) => ({ id: `payment-${payment.id}`, type: 'payment', category: 'Payments', title: payment.providerRef || payment.id, subtitle: `${payment.currency} ${payment.amount} · ${payment.status}`, path: '/dashboard/admin/billing' })),
     ];

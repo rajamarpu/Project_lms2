@@ -50,15 +50,17 @@ export function Button({ children, variant = 'primary', icon: Icon, className = 
   );
 }
 
-export function StatWidget({ label, value, delta, tone = 'blue', icon: Icon, footer, source = 'Live database' }) {
+export function StatWidget({ label, value, delta, tone = 'blue', icon: Icon, footer, source = 'Live database', onClick, destination }) {
   const displayValue = value === null || value === undefined || value === '' ? '—' : value;
+  const interactive = typeof onClick === 'function';
   return (
     <motion.article
       whileHover={{ y: -4 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className={`enterprise-card stat-widget tone-${tone}`}
-      aria-label={`${label}: ${displayValue}`}
+      className={`enterprise-card stat-widget tone-${tone} relative ${interactive ? 'cursor-pointer hover:border-[var(--accent)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--accent)]' : ''}`}
+      aria-label={interactive ? undefined : `${label}: ${displayValue}`}
     >
+      {interactive && <button type="button" className="absolute inset-0 z-20 rounded-[inherit] cursor-pointer" aria-label={`${label}: ${displayValue}. Open ${destination || 'details'}`} onClick={onClick}><span className="sr-only">Open {destination || label}</span></button>}
       <span className="stat-accent-line" aria-hidden />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -81,6 +83,7 @@ export function StatWidget({ label, value, delta, tone = 'blue', icon: Icon, foo
         {footer && <span className="stat-detail">{footer}</span>}
       </div>
       <div className="stat-source"><span aria-hidden />{source}</div>
+      {destination && <p className="mt-3 text-xs font-semibold text-[var(--accent)]">Open {destination} →</p>}
     </motion.article>
   );
 }

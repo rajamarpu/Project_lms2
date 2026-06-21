@@ -21,7 +21,7 @@ PORT=5001
 DATABASE_URL="postgresql://postgres.okzgkdlftosnlkzozhls:[YOUR-PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require&uselibpqcompat=true"
 JWT_SECRET=your_super_secret_jwt_key_here
 JWT_EXPIRES_IN=7d
-CLIENT_URL=http://localhost:8081
+CLIENT_URL=http://localhost:3000
 ```
 
 Optional admin seed credentials:

@@ -34,7 +34,7 @@ export const AppSidebar = ({
     <aside
       className={`${
         showFilters ? "block" : "hidden"
-      } lg:block w-full lg:w-[280px] lg:border-r lg:border-border lg:pr-6 shrink-0 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto overflow-x-hidden custom-scrollbar`}
+      } z-40 w-full overflow-y-auto overflow-x-hidden bg-background p-5 shadow-[var(--shadow-overlay)] lg:sticky lg:top-20 lg:block lg:h-[calc(100vh-5rem)] lg:w-[clamp(220px,20vw,280px)] lg:shrink-0 lg:border-r lg:border-border lg:bg-transparent lg:p-0 lg:pr-6 lg:shadow-none ${showFilters ? "fixed inset-x-0 bottom-0 top-16" : ""}`}
     >
       <div className="flex justify-between items-center mb-6">
         <h3 className="font-display font-bold text-lg text-foreground tracking-wide">All Filters</h3>

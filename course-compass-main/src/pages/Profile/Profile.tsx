@@ -1,14 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/store/AuthContext";
 import { profileApi } from "@/api/profile.api";
-import { User, Lock, Save, Mail, Edit3, Camera, Eye, EyeOff } from "lucide-react";
+import { Activity, Award, BarChart3, User, Lock, Save, Mail, Edit3, Camera, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/utils/apiError";
+import { courseApi } from "@/api/course.api";
+import { platformApi, type NotificationItem } from "@/api/platform.api";
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<"info" | "security">("info");
+  const [activeTab, setActiveTab] = useState<"overview" | "info" | "certificates" | "activity" | "security">("overview");
+  const [learningStats, setLearningStats] = useState({ enrolled: 0, completed: 0, averageProgress: 0 });
+  const [certificates, setCertificates] = useState<Array<{ id: string; courseId: string; course: { title: string }; issuedAt?: string }>>([]);
+  const [activityItems, setActivityItems] = useState<NotificationItem[]>([]);
   
   // Profile Info State
   const [name, setName] = useState(user?.name || "");
@@ -26,6 +32,20 @@ const Profile = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([courseApi.getMyEnrollments(), platformApi.certificates(), platformApi.notifications()]).then(([enrollmentResponse, certificateResponse, notificationResponse]) => {
+      if (!active) return;
+      const enrollments = enrollmentResponse.data.data || [];
+      const completed = enrollments.filter((item: { progress: number; status: string }) => item.progress >= 100 || item.status === 'completed').length;
+      const averageProgress = enrollments.length ? Math.round(enrollments.reduce((sum: number, item: { progress: number }) => sum + Number(item.progress || 0), 0) / enrollments.length) : 0;
+      setLearningStats({ enrolled: enrollments.length, completed, averageProgress });
+      setCertificates((certificateResponse.data.data || []).filter((item: { status: string }) => item.status === 'issued'));
+      setActivityItems((notificationResponse.data.data || []).slice(0, 8));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   if (!user) return null;
 
@@ -107,6 +127,7 @@ const Profile = () => {
       <div className="grid md:grid-cols-[240px_1fr] gap-8">
         {/* Sidebar */}
         <aside className="space-y-2">
+          <button onClick={() => setActiveTab("overview")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${activeTab === "overview" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}><BarChart3 className="w-4 h-4" /><span className="font-medium text-sm">Overview</span></button>
           <button
             onClick={() => setActiveTab("info")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
@@ -118,6 +139,8 @@ const Profile = () => {
             <User className="w-4 h-4" />
             <span className="font-medium text-sm">Personal Info</span>
           </button>
+          <button onClick={() => setActiveTab("certificates")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${activeTab === "certificates" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}><Award className="w-4 h-4" /><span className="font-medium text-sm">Certificates</span></button>
+          <button onClick={() => setActiveTab("activity")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${activeTab === "activity" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}><Activity className="w-4 h-4" /><span className="font-medium text-sm">Activity</span></button>
           
           <button
             onClick={() => setActiveTab("security")}
@@ -134,6 +157,7 @@ const Profile = () => {
 
         {/* Content */}
         <main className="glass-card p-6 md:p-8">
+          {activeTab === "overview" && <div className="animate-in fade-in slide-in-from-right-4 duration-300"><div className="flex flex-col gap-5 border-b border-border pb-7 sm:flex-row sm:items-center"><div className="h-24 w-24 overflow-hidden rounded-3xl border-2 border-primary/25 bg-primary/10">{user.avatar ? <img src={`${import.meta.env.VITE_BACKEND_URL || "http://localhost:5001"}${user.avatar}`} alt={user.name} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-3xl font-bold text-primary">{user.name.charAt(0)}</div>}</div><div><p className="page-eyebrow">Learning profile</p><h2 className="mt-1 text-2xl font-bold">{user.name}</h2><p className="mt-1 text-sm text-muted-foreground">{user.email}</p></div></div><div className="mt-7 grid gap-4 sm:grid-cols-3">{[[learningStats.enrolled,'Courses enrolled'],[`${learningStats.averageProgress}%`,'Average progress'],[certificates.length,'Certificates']].map(([value,label]) => <div key={String(label)} className="rounded-2xl border border-border bg-muted/25 p-5"><p className="text-2xl font-bold text-primary">{value}</p><p className="mt-1 text-sm text-muted-foreground">{label}</p></div>)}</div><div className="mt-7 rounded-2xl border border-border p-5"><h3 className="font-bold">Learning summary</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">You have completed {learningStats.completed} of {learningStats.enrolled} enrolled courses. Continue learning from your dashboard or review earned credentials here.</p><Link to="/dashboard" className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline">Open learner dashboard</Link></div></div>}
           {activeTab === "info" && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="mb-6 flex items-center gap-4 border-b border-border pb-6">
@@ -306,6 +330,8 @@ const Profile = () => {
               </form>
             </div>
           )}
+          {activeTab === "certificates" && <div className="animate-in fade-in slide-in-from-right-4 duration-300"><div className="mb-6"><h2 className="text-xl font-semibold">Earned certificates</h2><p className="mt-1 text-sm text-muted-foreground">Preview and download verified course credentials.</p></div><div className="space-y-3">{certificates.length ? certificates.map((certificate) => <Link key={certificate.id} to={`/certificate/${certificate.courseId}`} className="flex items-center justify-between gap-4 rounded-2xl border border-border p-4 transition hover:bg-muted"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"><Award className="h-5 w-5" /></div><div><p className="font-semibold">{certificate.course.title}</p><p className="text-xs text-muted-foreground">Issued {certificate.issuedAt ? new Date(certificate.issuedAt).toLocaleDateString() : 'recently'}</p></div></div><span className="text-sm font-semibold text-primary">View</span></Link>) : <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Complete an eligible course to earn your first certificate.</p>}</div></div>}
+          {activeTab === "activity" && <div className="animate-in fade-in slide-in-from-right-4 duration-300"><div className="mb-6"><h2 className="text-xl font-semibold">Activity timeline</h2><p className="mt-1 text-sm text-muted-foreground">Recent learning and account events.</p></div><div className="space-y-4">{activityItems.length ? activityItems.map((item) => <div key={item.id} className="relative border-l-2 border-primary/25 pl-5"><span className="absolute -left-[5px] top-1 h-2 w-2 rounded-full bg-primary" /><p className="font-semibold">{item.title}</p><p className="mt-1 text-sm text-muted-foreground">{item.message}</p><time className="mt-1 block text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</time></div>) : <p className="text-sm text-muted-foreground">No recent activity yet.</p>}</div></div>}
         </main>
       </div>
     </div>

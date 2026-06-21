@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -57,6 +57,35 @@
   --text-muted: #9ca3af;
   --border-base: rgba(255, 255, 255, 0.06);
   --border-hover: rgba(100, 255, 255, 0.2);
+
+  /* Semantic enterprise scale shared by all admin surfaces. */
+  --app-bg: var(--admin-shell-bg);
+  --surface: var(--admin-surface);
+  --surface-raised: var(--admin-surface-raised);
+  --text-primary: var(--admin-text-primary);
+  --text-secondary: var(--admin-text-secondary);
+  --text-inverted: #ffffff;
+  --action-primary: #3b82f6;
+  --action-primary-hover: #2563eb;
+  --action-secondary: #8b5cf6;
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-error: #ef4444;
+  --status-info: #06b6d4;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow-overlay: 0 24px 72px rgba(2, 6, 23, 0.42);
+  --shadow-elevated: 0 16px 44px rgba(2, 6, 23, 0.3);
 }
 
 html.light {
@@ -96,6 +125,13 @@ html.light {
   --text-muted: #64748b;
   --border-base: #e2e8f0;
   --border-hover: rgba(59, 130, 246, 0.35);
+  --app-bg: var(--admin-shell-bg);
+  --surface: var(--admin-surface);
+  --surface-raised: var(--admin-surface-raised);
+  --text-primary: var(--admin-text-primary);
+  --text-secondary: var(--admin-text-secondary);
+  --shadow-overlay: 0 24px 72px rgba(15, 23, 42, 0.16);
+  --shadow-elevated: 0 16px 44px rgba(15, 23, 42, 0.1);
 }
 
 body {
@@ -105,6 +141,35 @@ body {
   color: var(--admin-text-primary);
   min-height: 100vh;
   color-scheme: var(--color-scheme);
+}
+
+h1, h2, h3, h4, h5, h6,
+.admin-page-title,
+.section-title {
+  font-family: 'Poppins', 'Inter', sans-serif;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--action-primary) 72%, transparent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 767px) {
+  .admin-sidebar {
+    display: none !important;
+  }
+  .admin-content {
+    margin-left: 0 !important;
+  }
+  .admin-navbar {
+    padding-inline: 12px;
+  }
+  .admin-navbar [role='combobox'] {
+    max-width: 42vw;
+  }
+  .page-shell {
+    padding: 0;
+  }
 }
 
 .dashboard-title {

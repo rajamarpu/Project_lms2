@@ -268,7 +268,7 @@ export default function CoursePlayer() {
         </div>
 
         {/* Right: Sidebar Syllabus */}
-        <div className="w-full lg:w-[350px] border-l border-border bg-muted/5 flex flex-col shrink-0 h-full">
+        <div className="h-full w-full shrink-0 border-l border-border bg-muted/5 lg:w-[clamp(280px,27vw,380px)] flex flex-col">
           {enrollment && (
             <div className="p-5 border-b border-border shrink-0 bg-primary/5">
               <h4 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">Your Celebrity Mentor</h4>

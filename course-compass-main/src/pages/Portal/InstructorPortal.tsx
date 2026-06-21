@@ -107,7 +107,7 @@ const InstructorPortal = () => {
       const filtered =
         user.role === "admin"
           ? all
-          : all; // Admin sees all by default in this view, though they can manage anything
+          : all.filter((course) => course.instructor?.id === user.id);
       setCourses(filtered);
       if (filtered.length > 0) {
         setLessonForm((f) => f.courseId ? f : ({ ...f, courseId: filtered[0].id }));
@@ -139,7 +139,7 @@ const InstructorPortal = () => {
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
-  if (user?.role !== "admin") {
+  if (user?.role !== "admin" && user?.role !== "instructor") {
     return <Navigate to="/" replace />;
   }
 
@@ -194,13 +194,13 @@ const InstructorPortal = () => {
       <div className="mb-8">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/40 bg-primary/10 text-primary text-xs font-medium mb-4">
           <GraduationCap className="w-3.5 h-3.5" />
-          Admin Portal
+          {user?.role === "admin" ? "Admin Portal" : "Instructor Portal"}
         </div>
         <h1 className="font-display font-bold text-3xl md:text-4xl mb-2">
-          Management <span className="text-gradient">Portal</span>
+          {user?.role === "admin" ? "Management" : "Teaching"} <span className="text-gradient">Portal</span>
         </h1>
         <p className="text-muted-foreground/80">
-          Manage your courses, lessons, and track student engagement.
+          {user?.role === "admin" ? "Manage courses, lessons, and platform engagement." : "Review your courses, enrollment reach, curriculum, and teaching performance."}
         </p>
       </div>
 
@@ -210,7 +210,7 @@ const InstructorPortal = () => {
           { icon: BookOpen,   label: "Total Courses",     val: courses.length,      color: "text-primary",   bg: "bg-primary/10"   },
           { icon: Users,      label: "Total Enrollments", val: totalEnrollments,    color: "text-secondary", bg: "bg-secondary/10" },
           { icon: Film,       label: "Total Lessons",     val: totalLessons,        color: "text-primary",   bg: "bg-primary/10"   },
-          { icon: DollarSign, label: "Total Revenue",     val: `$${revenue}`,       color: "text-green-500", bg: "bg-green-500/10" },
+          { icon: DollarSign, label: "Verified Revenue",  val: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue), color: "text-green-500", bg: "bg-green-500/10" },
         ].map((s) => (
           <div key={s.label} className="glass-card p-5 flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center shrink-0`}>
@@ -228,7 +228,7 @@ const InstructorPortal = () => {
       <div className="flex items-center gap-1 border-b border-border mb-8">
         {([
           { key: "courses",    icon: LayoutGrid, label: "All Courses" },
-          { key: "curriculum", icon: BookOpen,   label: "Manage Curriculum" },
+          ...(user?.role === "admin" ? [{ key: "curriculum" as const, icon: BookOpen, label: "Manage Curriculum" }] : []),
         ] as const).map((t) => (
           <button
             key={t.key}
@@ -325,24 +325,24 @@ const InstructorPortal = () => {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
-                  <Link
+                  {user.role === "admin" && <Link
                     to={`/portal/courses/${c.id}`}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-primary border border-primary/30 hover:bg-primary/10 transition-colors"
                   >
                     <Edit2 className="w-3.5 h-3.5" /> Edit
-                  </Link>
+                  </Link>}
                   <Link
                     to={`/courses/${c.id}`}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground border border-border hover:bg-muted/40 transition-colors"
                   >
                     <ChevronRight className="w-3.5 h-3.5" /> View
                   </Link>
-                  <button
+                  {user.role === "admin" && <button
                     onClick={() => setDeleteTarget(c)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-destructive border border-destructive/30 hover:bg-destructive/10 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" /> Delete
-                  </button>
+                  </button>}
                 </div>
               </div>
             ))

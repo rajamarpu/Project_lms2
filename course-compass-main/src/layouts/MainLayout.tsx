@@ -3,9 +3,9 @@ import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 
 export const MainLayout = () => (
-  <div className="min-h-screen flex flex-col">
+  <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip">
     <Navbar />
-    <main className="flex-1">
+    <main id="main-content" className="min-w-0 flex-1">
       <Outlet />
     </main>
     <Footer />

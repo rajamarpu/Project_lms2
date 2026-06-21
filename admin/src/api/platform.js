@@ -4,6 +4,7 @@ async function request(path, options = {}) {
   const token = localStorage.getItem('lms_token');
   const response = await fetch(`${API_URL}${path}`, {
     credentials: 'include',
+    cache: 'no-store',
     ...options,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...options.headers },
   });
@@ -13,6 +14,21 @@ async function request(path, options = {}) {
 }
 
 export const platformAdminApi = {
+  uploadImage: async (file) => {
+    const token = localStorage.getItem('lms_token');
+    const body = new FormData();
+    body.append('file', file);
+    const response = await fetch(`${API_URL}/upload`, {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'Image upload failed');
+    return payload;
+  },
   operations: (kind) => request(`/platform/admin/operations/${kind}`),
   analytics: () => request('/platform/admin/analytics'),
   auditLogs: () => request('/platform/admin/audit-logs?limit=100'),

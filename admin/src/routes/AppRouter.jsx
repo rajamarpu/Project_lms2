@@ -14,6 +14,7 @@ const AdminStudents = corePage('LearnersPage');
 const AdminCourses = corePage('CoursesPage');
 const AdminTeachers = corePage('InstructorsPage');
 const AdminAnalytics = lazy(() => import('../pages/Dashboard/Admin/PlatformAnalytics'));
+const AnalyticsMetricDetail = lazy(() => import('../pages/Dashboard/Admin/AnalyticsMetricDetail'));
 const AdminReviews = persistedPage('ReviewsPage');
 const AdminSettings = lazy(() => import('../pages/Dashboard/Admin/Settings'));
 const CourseWorkspace = lazy(() => import('../pages/Dashboard/Admin/CourseWorkspace'));
@@ -45,6 +46,7 @@ const AppRouter = () => {
               <Route path="/dashboard/admin/courses" element={<AdminCourses />} />
               <Route path="/dashboard/admin/teachers" element={<AdminTeachers />} />
               <Route path="/dashboard/admin/analytics" element={<AdminAnalytics />} />
+              <Route path="/dashboard/admin/analytics/:metricKey" element={<AnalyticsMetricDetail />} />
               <Route path="/dashboard/admin/feature-hub" element={<FeatureHub />} />
               <Route path="/dashboard/admin/reviews" element={<AdminReviews />} />
               <Route path="/dashboard/admin/notifications" element={<Communications />} />
@@ -75,6 +77,7 @@ const AppRouter = () => {
               <Route path="/courses/:courseId/edit" element={<CourseWorkspace />} />
               <Route path="/course-builder" element={<AdminCourses />} />
               <Route path="/analytics" element={<AdminAnalytics />} />
+              <Route path="/analytics/:metricKey" element={<AnalyticsMetricDetail />} />
               <Route path="/feature-hub" element={<FeatureHub />} />
               <Route path="/certificates" element={<Certificates />} />
               <Route path="/assignments" element={<Assignments />} />

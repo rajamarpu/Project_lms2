@@ -22,21 +22,21 @@ const QUICK_ACTIONS = [
   {
     label: 'Add Student',
     icon: MdPersonAdd,
-    path: '/dashboard/admin/students',
+    path: '/dashboard/admin/students?create=1',
     className:
       'bg-gradient-to-r from-blue-500 to-cyan-400 hover:shadow-[0_8px_24px_rgba(59,130,246,0.45)]',
   },
   {
     label: 'Add Course',
     icon: MdLibraryBooks,
-    path: '/dashboard/admin/courses',
+    path: '/dashboard/admin/courses?create=1',
     className:
       'bg-gradient-to-r from-purple-500 to-pink-500 hover:shadow-[0_8px_24px_rgba(168,85,247,0.45)]',
   },
   {
     label: 'Generate Report',
     icon: MdAssessment,
-    path: '/dashboard/admin/analytics',
+    path: '/dashboard/admin/reports',
     className:
       'bg-gradient-to-r from-orange-500 to-amber-400 hover:shadow-[0_8px_24px_rgba(249,115,22,0.45)]',
   },
@@ -170,7 +170,8 @@ const ProfileDropdown = ({ onToast }) => {
 
   const handleHelp = () => {
     close();
-    onToast?.('Support: support@uptoskills.com — we typically reply within 24 hours.');
+    onToast?.('Opening the support workspace.');
+    navigate('/dashboard/admin/support-tickets');
   };
 
   const dropdownPanel =

@@ -21,6 +21,19 @@ enum EnrollmentStatus {
   dropped
 }
 
+enum UserStatus {
+  pending
+  approved
+  rejected
+  suspended
+}
+
+enum CourseStatus {
+  pending
+  approved
+  rejected
+}
+
 enum NotificationType {
   system
   course
@@ -51,8 +64,8 @@ model User {
   name      String
   email     String   @unique
   password  String
-  role      Role     @default(user)
-  status    String   @default("pending") // pending, approved, rejected, suspended
+  role      Role       @default(user)
+  status    UserStatus @default(pending)
   bio       String?
   avatar    String?
   createdAt DateTime @default(now())
@@ -99,7 +112,7 @@ model Course {
   xp               String?
   gradient         String?
   icon             String?
-  status           String    @default("pending") // draft, pending, scheduled, approved, archived, rejected
+  status           CourseStatus @default(pending)
   scheduledAt      DateTime?
   publishedAt      DateTime?
   archivedAt       DateTime?

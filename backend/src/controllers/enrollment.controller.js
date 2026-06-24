@@ -15,7 +15,7 @@ exports.enrollInCourse = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Course not found' });
     }
 
-    const isPublished = course.status === 'approved' || (course.status === 'scheduled' && course.scheduledAt && course.scheduledAt <= new Date());
+    const isPublished = course.status === 'approved';
     if (!isPublished) {
       return res.status(404).json({ success: false, error: 'Course not found' });
     }

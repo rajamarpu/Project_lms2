@@ -4,6 +4,31 @@ const { safePage } = require('../utils/platformRules');
 const { audit } = require('../services/audit.service');
 const { formatPrice } = require('../utils/priceHelper');
 
+const slugify = (value) => String(value || '')
+  .toLowerCase()
+  .trim()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '');
+
+const getUniqueCourseSlug = async (title, excludedCourseId = null) => {
+  const baseSlug = slugify(title) || 'course';
+  let candidate = baseSlug;
+  let suffix = 1;
+
+  while (await prisma.course.findFirst({
+    where: {
+      slug: candidate,
+      ...(excludedCourseId ? { NOT: { id: excludedCourseId } } : {})
+    },
+    select: { id: true }
+  })) {
+    candidate = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+};
+
 // @desc    Get all courses
 // @route   GET /api/courses
 // @access  Public
@@ -98,8 +123,10 @@ exports.createCourse = async (req, res, next) => {
     }
     const { title, description, category, level, thumbnail, celebrityTeacher, price, duration, rating, outcomes, xp, gradient, icon, status, generateAI } = req.body;
     const publishNow = status === 'approved';
+    const slug = await getUniqueCourseSlug(title);
     const course = await prisma.course.create({
       data: {
+        slug,
         title,
         description,
         category,
@@ -388,7 +415,9 @@ exports.duplicateCourse = async (req, res, next) => {
   try {
     const source = await prisma.course.findUnique({ where: { id: req.params.id }, include: { lessons: { orderBy: { order: 'asc' } } } });
     if (!source) return res.status(404).json({ success: false, error: 'Course not found' });
+    const slug = await getUniqueCourseSlug(`${source.title} copy`);
     const copy = await prisma.$transaction(async (tx) => tx.course.create({ data: {
+      slug,
       title: `${source.title} (Copy)`, description: source.description, category: source.category, level: source.level,
       price: source.price, thumbnail: source.thumbnail, celebrityTeacher: source.celebrityTeacher, duration: source.duration,
       rating: source.rating, outcomes: source.outcomes, xp: source.xp, gradient: source.gradient, icon: source.icon,

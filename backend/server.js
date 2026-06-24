@@ -16,6 +16,7 @@ connectDB().then(() => {
   });
 }).catch((err) => {
   logger.error({ err }, 'Failed to connect to database. Server not started.');
+  process.exit(1);
 });
 
 // Graceful Shutdown Handler

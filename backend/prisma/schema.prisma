@@ -29,11 +29,73 @@ enum UserStatus {
 }
 
 enum CourseStatus {
+<<<<<<< HEAD
   pending
   approved
   rejected
 }
 
+=======
+  draft
+  pending
+  scheduled
+  approved
+  archived
+  rejected
+}
+
+enum ReviewStatus {
+  published
+  hidden
+}
+
+enum CertificateStatus {
+  pending
+  issued
+  revoked
+}
+
+enum BillingStatus {
+  pending
+  paid
+  failed
+  refunded
+  canceled
+}
+
+enum LiveSessionStatus {
+  scheduled
+  live
+  completed
+  canceled
+}
+
+enum CommunityReportStatus {
+  open
+  actioned
+  dismissed
+}
+
+enum SupportTicketPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum PracticeQuestionDifficulty {
+  easy
+  medium
+  hard
+}
+
+enum PracticeQuestionType {
+  multiple_choice
+  true_false
+  short_answer
+}
+
+>>>>>>> 3b70a8a (Improved Database setup)
 enum NotificationType {
   system
   course
@@ -94,7 +156,11 @@ model User {
   name      String
   email     String   @unique
   password  String
+<<<<<<< HEAD
   role      Role       @default(user)
+=======
+  role      Role     @default(user)
+>>>>>>> 3b70a8a (Improved Database setup)
   status    UserStatus @default(pending)
   bio       String?
   avatar    String?
@@ -128,6 +194,7 @@ model User {
 
 model Course {
   id               String    @id @default(cuid())
+  slug             String?   @unique
   title            String
   description      String
   category         String
@@ -323,10 +390,17 @@ model CourseReview {
   rating    Int
   comment   String?
   status    ReviewStatus @default(published)
+<<<<<<< HEAD
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+=======
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+>>>>>>> 3b70a8a (Improved Database setup)
 
   @@unique([userId, courseId])
   @@index([courseId, status])
@@ -447,7 +521,7 @@ model SupportTicket {
   assigneeId  String?
   subject     String
   description String
-  priority    String          @default("medium")
+  priority    SupportTicketPriority @default(medium)
   status      TicketStatus    @default(open)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
@@ -477,11 +551,18 @@ model BillingRecord {
   userId      String?
   courseId    String?
   amount      Float
+<<<<<<< HEAD
   currency    String        @default("INR")
   status      BillingStatus
   providerRef String?       @unique
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+=======
+  currency    String   @default("INR")
+  status      BillingStatus @default(pending)
+  providerRef String?  @unique
+  createdAt   DateTime @default(now())
+>>>>>>> 3b70a8a (Improved Database setup)
 
   @@index([status, createdAt])
 }
@@ -513,10 +594,17 @@ model LiveSession {
   durationMinutes Int               @default(60)
   meetingUrl      String?
   status          LiveSessionStatus @default(scheduled)
+<<<<<<< HEAD
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   course          Course?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   instructor      User              @relation("LiveSessionInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+=======
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  course          Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  instructor      User     @relation("LiveSessionInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+>>>>>>> 3b70a8a (Improved Database setup)
 
   @@index([startsAt, status])
   @@index([courseId, startsAt])
@@ -556,7 +644,11 @@ model CommunityReport {
   postId     String
   reporterId String
   reason     String
+<<<<<<< HEAD
   status     ReportStatus  @default(open)
+=======
+  status     CommunityReportStatus @default(open)
+>>>>>>> 3b70a8a (Improved Database setup)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   reviewedAt DateTime?
@@ -604,8 +696,8 @@ model PracticeQuestion {
   id          String   @id @default(cuid())
   authorId    String?
   category    String
-  difficulty  String   @default("medium")
-  type        String   @default("multiple_choice")
+  difficulty  PracticeQuestionDifficulty @default(medium)
+  type        PracticeQuestionType @default(multiple_choice)
   prompt      String
   options     Json?
   answer      Json?

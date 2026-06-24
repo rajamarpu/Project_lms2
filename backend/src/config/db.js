@@ -3,7 +3,9 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { readReplicas } = require('@prisma/extension-read-replicas');
 const logger = require('../utils/logger');
+const { getDatabaseUrl } = require('./database-url');
 
+<<<<<<< HEAD
 // Support test database URL fallback
 const dbUrl = process.env.NODE_ENV === 'test'
   ? (process.env.TEST_DATABASE_URL || process.env.DATABASE_URL)
@@ -32,6 +34,10 @@ if (!dbUrl) {
 
 // Setup adapter with selected DB URL
 const adapter = new PrismaPg({ connectionString: dbUrl });
+=======
+const { url: databaseUrl, source: databaseUrlSource } = getDatabaseUrl();
+const adapter = new PrismaPg({ connectionString: databaseUrl });
+>>>>>>> 3b70a8a (Improved Database setup)
 
 // Base prisma client
 const basePrisma = new PrismaClient({ 
@@ -52,6 +58,7 @@ const prisma = replicaUrl
 const connectDB = async () => {
   try {
     await basePrisma.$connect();
+<<<<<<< HEAD
     logger.info(`PostgreSQL Connected via Prisma (Mode: ${process.env.NODE_ENV || 'development'})`);
     if (replicaUrl) {
       logger.info('Database Read-Replica Ready');
@@ -83,6 +90,16 @@ const connectDB = async () => {
     console.error('=========================================================================\n');
     logger.error({ err: error }, 'Database connection error');
     process.exit(1);
+=======
+    logger.info({ source: databaseUrlSource }, 'PostgreSQL Primary Connected via Prisma');
+    logger.info(`Database Read-Replica Ready: ${!!process.env.DATABASE_URL_REPLICA}`);
+  } catch (error) {
+    logger.error({ err: error, source: databaseUrlSource }, 'Database connection error');
+    const hint = process.env.NODE_ENV === 'test'
+      ? 'Check DATABASE_URL_TEST or DATABASE_URL.'
+      : 'If Supabase direct host fails, switch to the pooler URL in .env.';
+    throw new Error(`Failed to connect to the database using ${databaseUrlSource}. ${hint}`);
+>>>>>>> 3b70a8a (Improved Database setup)
   }
 };
 

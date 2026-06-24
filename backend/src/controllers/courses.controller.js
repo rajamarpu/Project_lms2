@@ -2,6 +2,7 @@ const { prisma } = require('../config/db');
 const { clearCache } = require('../middlewares/cache.middleware');
 const { safePage } = require('../utils/platformRules');
 const { audit } = require('../services/audit.service');
+const { formatPrice } = require('../utils/priceHelper');
 
 // @desc    Get all courses
 // @route   GET /api/courses
@@ -12,7 +13,7 @@ exports.getCourses = async (req, res, next) => {
 
     const { page: pageNumber, limit: limitNumber, skip, orderBy } = safePage(req.query, ['createdAt', 'title', 'rating', 'price']);
 
-    const where = { AND: [{ OR: [{ status: 'approved' }, { status: 'scheduled', scheduledAt: { lte: new Date() } }] }] };
+    const where = { AND: [{ status: 'approved' }] };
 
     if (category) where.category = category;
     if (level) where.level = level;
@@ -43,7 +44,7 @@ exports.getCourses = async (req, res, next) => {
     res.status(200).json({
       success: true,
       count: courses.length,
-      data: courses,
+      data: formatPrice(courses),
       meta: {
         total,
         page: pageNumber,
@@ -73,7 +74,7 @@ exports.getCourse = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Course not found' });
     }
     // Only admins and the course instructor can view non-approved courses
-    const isPublished = course.status === 'approved' || (course.status === 'scheduled' && course.scheduledAt && course.scheduledAt <= new Date());
+    const isPublished = course.status === 'approved';
     if (!isPublished) {
       const isOwner = req.user && course.instructorId === req.user.id;
       const isAdmin = req.user && req.user.role === 'admin';
@@ -81,7 +82,7 @@ exports.getCourse = async (req, res, next) => {
         return res.status(404).json({ success: false, error: 'Course not found' });
       }
     }
-    res.status(200).json({ success: true, data: course });
+    res.status(200).json({ success: true, data: formatPrice(course) });
   } catch (error) {
     next(error);
   }
@@ -92,8 +93,8 @@ exports.getCourse = async (req, res, next) => {
 // @access  Private (Admin/Instructor)
 exports.createCourse = async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Only admins can create and generate courses' });
+    if (req.user.role !== 'admin' && req.user.role !== 'instructor') {
+      return res.status(403).json({ success: false, error: 'Only admins and instructors can create courses' });
     }
     const { title, description, category, level, thumbnail, celebrityTeacher, price, duration, rating, outcomes, xp, gradient, icon, status, generateAI } = req.body;
     const publishNow = status === 'approved';
@@ -105,14 +106,14 @@ exports.createCourse = async (req, res, next) => {
         level,
         thumbnail,
         celebrityTeacher,
-        price: price ? parseFloat(price) : 0,
+        price: price ? Math.round(parseFloat(price) * 100) : 0,
         duration: duration || 'Self-paced',
         rating: rating ? parseFloat(rating) : 4.5,
         outcomes: outcomes || [],
         xp: xp || '1000 XP',
         gradient: gradient || 'from-blue-600 via-blue-500 to-cyan-400',
         icon: icon || '🤖',
-        status: publishNow ? 'approved' : 'draft',
+        status: publishNow ? 'approved' : 'pending',
         publishedAt: publishNow ? new Date() : null,
         instructorId: req.user.id
       }
@@ -144,7 +145,7 @@ exports.createCourse = async (req, res, next) => {
     // Invalidate course cache
     await clearCache('cache:/api/courses');
     await audit(req, publishNow ? 'course.create.publish' : 'course.create.draft', 'Course', course.id, null, { title: course.title, status: course.status });
-    res.status(201).json({ success: true, data: course });
+    res.status(201).json({ success: true, data: formatPrice(course) });
   } catch (error) {
     next(error);
   }
@@ -160,14 +161,14 @@ exports.updateCourse = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Course not found' });
     }
 
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Not authorized to update this course. Admin only.' });
+    if (req.user.role !== 'admin' && (req.user.role !== 'instructor' || course.instructorId !== req.user.id)) {
+      return res.status(403).json({ success: false, error: 'Not authorized to update this course.' });
     }
 
     const allowedFields = ['title', 'description', 'category', 'level', 'thumbnail', 'celebrityTeacher', 'price', 'duration', 'rating', 'outcomes', 'xp', 'gradient', 'icon'];
     const dataToUpdate = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowedFields.includes(key)));
     if (dataToUpdate.price !== undefined) {
-      dataToUpdate.price = parseFloat(dataToUpdate.price) || 0;
+      dataToUpdate.price = Math.round(parseFloat(dataToUpdate.price) * 100) || 0;
     }
     if (dataToUpdate.rating !== undefined) {
       dataToUpdate.rating = parseFloat(dataToUpdate.rating) || 4.5;
@@ -179,7 +180,7 @@ exports.updateCourse = async (req, res, next) => {
     });
     // Invalidate course cache
     await clearCache('cache:/api/courses');
-    res.status(200).json({ success: true, data: updated });
+    res.status(200).json({ success: true, data: formatPrice(updated) });
   } catch (error) {
     next(error);
   }
@@ -195,8 +196,8 @@ exports.deleteCourse = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Course not found' });
     }
 
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Not authorized to delete this course. Admin only.' });
+    if (req.user.role !== 'admin' && (req.user.role !== 'instructor' || course.instructorId !== req.user.id)) {
+      return res.status(403).json({ success: false, error: 'Not authorized to delete this course.' });
     }
 
     await prisma.course.delete({ where: { id: req.params.id } });
@@ -218,8 +219,8 @@ exports.addLesson = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Course not found' });
     }
 
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Not authorized to add lessons to this course. Admin only.' });
+    if (req.user.role !== 'admin' && (req.user.role !== 'instructor' || course.instructorId !== req.user.id)) {
+      return res.status(403).json({ success: false, error: 'Not authorized to add lessons to this course.' });
     }
 
     const { title, content, videoUrl, order } = req.body;
@@ -250,8 +251,8 @@ exports.deleteLesson = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Course not found' });
     }
 
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Not authorized to delete lessons from this course. Admin only.' });
+    if (req.user.role !== 'admin' && (req.user.role !== 'instructor' || course.instructorId !== req.user.id)) {
+      return res.status(403).json({ success: false, error: 'Not authorized to delete lessons from this course.' });
     }
 
     const lesson = await prisma.lesson.findUnique({ where: { id: req.params.lessonId } });
@@ -391,12 +392,12 @@ exports.duplicateCourse = async (req, res, next) => {
       title: `${source.title} (Copy)`, description: source.description, category: source.category, level: source.level,
       price: source.price, thumbnail: source.thumbnail, celebrityTeacher: source.celebrityTeacher, duration: source.duration,
       rating: source.rating, outcomes: source.outcomes, xp: source.xp, gradient: source.gradient, icon: source.icon,
-      status: 'draft', instructorId: source.instructorId,
+      status: 'pending', instructorId: source.instructorId,
       lessons: { create: source.lessons.map((lesson) => ({ title: lesson.title, content: lesson.content, videoUrl: lesson.videoUrl, order: lesson.order, type: lesson.type, durationSeconds: lesson.durationSeconds, resources: lesson.resources, transcript: lesson.transcript })) },
     }, include: { lessons: true } }));
     await clearCache('cache:/api/courses');
     await audit(req, 'course.duplicate', 'Course', copy.id, { sourceId: source.id }, { title: copy.title });
-    res.status(201).json({ success: true, data: copy });
+    res.status(201).json({ success: true, data: formatPrice(copy) });
   } catch (error) { next(error); }
 };
 

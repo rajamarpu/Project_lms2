@@ -42,6 +42,7 @@ export const AppRouter = () => {
             <Route path="/support" element={<Support />} />
             <Route path="/learning-paths" element={<LearningPaths />} />
             <Route path="/learning-paths/:id" element={<LearningPathDetails />} />
+            <Route path="/paths/:id" element={<LearningPathDetails />} />
             <Route path="/verify/:verificationId" element={<VerifyCertificate />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/learn/:id" element={<CoursePlayer />} />
@@ -58,7 +59,7 @@ export const AppRouter = () => {
               <Route path="/ai-tutors" element={<AITutors />} />
               <Route path="/questions" element={<QuestionPractice />} />
             </Route>
-            <Route element={<ProtectedRoute roles={["admin"]} />}>
+            <Route element={<ProtectedRoute roles={["admin", "instructor"]} />}>
               <Route path="/courses/new" element={<CreateCourse />} />
               <Route path="/portal" element={<InstructorPortal />} />
               <Route path="/portal/courses/:id" element={<ManageCourse />} />

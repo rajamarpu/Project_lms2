@@ -127,15 +127,7 @@ export function loadTeachers() {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      const seen = new Set();
-      return parsed
-        .map((t, i) => normalizeTeacher(t, i))
-        .filter((teacher) => {
-          const identity = teacher.id ?? `${teacher.name || ''}:${teacher.email || ''}`.toLowerCase();
-          if (seen.has(identity)) return false;
-          seen.add(identity);
-          return true;
-        });
+      return parsed.map((t, i) => normalizeTeacher(t, i));
     } catch {
       return initialTeachers;
     }

@@ -16,6 +16,9 @@ function readCollapsedFromStorage() {
 
 export function AdminSidebarProvider({ children }) {
   const [collapsed, setCollapsed] = useState(readCollapsedFromStorage);
+  // Separate from desktop "collapsed" state: on mobile the sidebar is an
+  // off-canvas drawer that's closed by default, not a width-collapsed rail.
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const setCollapsedPersisted = useCallback((value) => {
     setCollapsed(value);
@@ -38,6 +41,12 @@ export function AdminSidebarProvider({ children }) {
     });
   }, []);
 
+  const toggleMobileOpen = useCallback(() => {
+    setMobileOpen((prev) => !prev);
+  }, []);
+
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+
   const sidebarWidth = collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED;
 
   const value = useMemo(
@@ -46,8 +55,11 @@ export function AdminSidebarProvider({ children }) {
       toggleCollapsed,
       setCollapsed: setCollapsedPersisted,
       sidebarWidth,
+      mobileOpen,
+      toggleMobileOpen,
+      closeMobile,
     }),
-    [collapsed, toggleCollapsed, setCollapsedPersisted, sidebarWidth]
+    [collapsed, toggleCollapsed, setCollapsedPersisted, sidebarWidth, mobileOpen, toggleMobileOpen, closeMobile]
   );
 
   return (

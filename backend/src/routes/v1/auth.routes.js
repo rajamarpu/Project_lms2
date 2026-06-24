@@ -1,12 +1,10 @@
 const express = require('express');
-const { register, login, logout, logoutAll, refresh, getMe, forgotPassword, resetPassword } = require('../../controllers/auth.controller');
+const { register, login, logout, getMe, forgotPassword, resetPassword } = require('../../controllers/auth.controller');
 const { protect } = require('../../middlewares/auth.middleware');
 const { validate } = require('../../middlewares/validate.middleware');
 const { registerSchema, loginSchema } = require('../../validations/auth.validation');
-const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { success: false, error: 'Too many authentication attempts. Try again later.' } });
 
 /**
  * @swagger
@@ -33,7 +31,7 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHea
  *       201:
  *         description: Successfully registered
  */
-router.post('/register', authLimiter, validate(registerSchema), register);
+router.post('/register', validate(registerSchema), register);
 
 /**
  * @swagger
@@ -56,8 +54,7 @@ router.post('/register', authLimiter, validate(registerSchema), register);
  *       200:
  *         description: Successfully authenticated
  */
-router.post('/login', authLimiter, validate(loginSchema), login);
-router.post('/refresh', refresh);
+router.post('/login', validate(loginSchema), login);
 
 /**
  * @swagger
@@ -72,7 +69,6 @@ router.post('/refresh', refresh);
  *         description: Successfully logged out
  */
 router.post('/logout', protect, logout);
-router.post('/logout-all', protect, logoutAll);
 
 /**
  * @swagger
@@ -107,7 +103,7 @@ router.get('/me', protect, getMe);
  *       200:
  *         description: Reset link sent
  */
-router.post('/forgot-password', authLimiter, forgotPassword);
+router.post('/forgot-password', forgotPassword);
 
 /**
  * @swagger
@@ -139,6 +135,6 @@ router.post('/forgot-password', authLimiter, forgotPassword);
  *       200:
  *         description: Password successfully reset
  */
-router.put('/reset-password/:id/:token', authLimiter, resetPassword);
+router.put('/reset-password/:id/:token', resetPassword);
 
 module.exports = router;

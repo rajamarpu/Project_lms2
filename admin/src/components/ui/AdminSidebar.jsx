@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -11,20 +11,11 @@ import {
   LuBookOpen,
   LuChartBar,
   LuMessageSquare,
+  LuBell,
   LuSettings2,
   LuLogOut,
   LuChevronRight,
   LuChevronLeft,
-  LuBadgeCheck,
-  LuClipboardCheck,
-  LuPencilRuler,
-  LuWalletCards,
-  LuShieldCheck,
-  LuActivity,
-  LuLifeBuoy,
-  LuFileChartLine,
-  LuBell,
-  LuSparkles,
 } from 'react-icons/lu';
 
 // ── Per-item accent colour config ─────────────────────────────────────────────
@@ -37,17 +28,6 @@ const ACCENT = {
   'Reviews & Ratings':{ color: '#EC4899', rgb: '236,72,153'  },
   Notifications:      { color: '#14B8A6', rgb: '20,184,166'  },
   Settings:           { color: '#6366F1', rgb: '99,102,241'  },
-  Builder:            { color: '#F59E0B', rgb: '245,158,11'  },
-  Certificates:       { color: '#10B981', rgb: '16,185,129'  },
-  Assignments:        { color: '#3B82F6', rgb: '59,130,246'  },
-  Assessments:        { color: '#8B5CF6', rgb: '139,92,246' },
-  Billing:            { color: '#22C55E', rgb: '34,197,94'   },
-  Reports:            { color: '#06B6D4', rgb: '6,182,212'   },
-  Support:            { color: '#F97316', rgb: '249,115,22'  },
-  Governance:         { color: '#94A3B8', rgb: '148,163,184' },
-  Activity:           { color: '#EC4899', rgb: '236,72,153'  },
-  Profile:            { color: '#6366F1', rgb: '99,102,241'  },
-  'Feature Hub':      { color: '#A855F7', rgb: '168,85,247'   },
 };
 
 function SidebarTooltip({ label, children, enabled }) {
@@ -104,7 +84,7 @@ function SidebarTooltip({ label, children, enabled }) {
 const AdminSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { collapsed, toggleCollapsed } = useAdminSidebar();
+  const { collapsed, toggleCollapsed, mobileOpen, closeMobile } = useAdminSidebar();
 
   const links = [
     { name: 'Dashboard',           path: '/dashboard/admin',              icon: LuLayoutDashboard, end: true },
@@ -112,33 +92,43 @@ const AdminSidebar = () => {
     { name: 'Celebrity Teachers',  path: '/dashboard/admin/teachers',     icon: LuStar },
     { name: 'Courses',             path: '/dashboard/admin/courses',      icon: LuBookOpen },
     { name: 'Analytics',           path: '/dashboard/admin/analytics',    icon: LuChartBar },
-    { name: 'Feature Hub',         path: '/dashboard/admin/feature-hub',  icon: LuSparkles },
-    { name: 'Certificates',        path: '/dashboard/admin/certificates', icon: LuBadgeCheck },
-    { name: 'Assignments',         path: '/dashboard/admin/assignments',  icon: LuClipboardCheck },
-    { name: 'Assessments',         path: '/dashboard/admin/assessments',  icon: LuPencilRuler },
     { name: 'Reviews & Ratings',   path: '/dashboard/admin/reviews',      icon: LuMessageSquare },
-    { name: 'Notifications',      path: '/dashboard/admin/notifications', icon: LuBell },
-    { name: 'Billing',             path: '/dashboard/admin/billing',      icon: LuWalletCards },
-    { name: 'Reports',             path: '/dashboard/admin/reports',      icon: LuFileChartLine },
-    { name: 'Support',             path: '/dashboard/admin/support-tickets', icon: LuLifeBuoy },
-    { name: 'Governance',          path: '/dashboard/admin/audit-logs',   icon: LuShieldCheck },
-    { name: 'Activity',            path: '/dashboard/admin/activity-logs', icon: LuActivity },
+    { name: 'Notifications',       path: '/dashboard/admin/notifications', icon: LuBell },
     { name: 'Settings',            path: '/dashboard/admin/settings',     icon: LuSettings2 },
   ];
 
   const handleLogout = () => {
     localStorage.removeItem('role');
-    localStorage.removeItem('lms_token');
-    localStorage.removeItem('lms_user');
+    localStorage.removeItem('lms_admin_token');
+    localStorage.removeItem('lms_admin_user');
     navigate('/admin-login');
   };
 
   return (
-    <aside
-      className={`admin-sidebar h-screen border-r flex flex-col fixed left-0 top-0 z-50 transition-[width] duration-[250ms] ease-in-out ${
-        collapsed ? 'w-[84px]' : 'w-[280px]'
-      }`}
-    >
+    <>
+      {/* Mobile backdrop — closes the drawer on outside tap without
+          touching the desktop `collapsed` width state. */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          onClick={closeMobile}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`admin-sidebar h-screen border-r flex flex-col fixed left-0 top-0 z-50 transition-[width,transform] duration-[250ms] ease-in-out ${
+          collapsed ? 'md:w-[84px]' : 'md:w-[280px]'
+        } w-[280px] ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+      >
+        {/* Mobile close button */}
+        <button
+          onClick={closeMobile}
+          className="md:hidden absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+          aria-label="Close sidebar"
+        >
+          <LuChevronLeft size={18} />
+        </button>
       {/* ── Logo ── */}
       <div
         className={`flex items-center border-b border-[var(--admin-nav-border)] transition-[padding] duration-[250ms] ease-in-out ${
@@ -193,21 +183,16 @@ const AdminSidebar = () => {
           const accent = ACCENT[link.name] || { color: '#8B5CF6', rgb: '139,92,246' };
           const IconComponent = link.icon;
           const isStudentsLink = link.name === 'Students';
-          const isTeachersLink = link.name === 'Celebrity Teachers';
-          const isCoursesLink = link.name === 'Courses';
-          const isGovernanceLink = link.name === 'Governance';
 
           const navItem = (
             <NavLink
               to={link.path}
               end={link.end}
+              onClick={closeMobile}
               className={({ isActive }) => {
                 const active =
                   isActive ||
-                  (isStudentsLink && location.pathname.includes('/students')) ||
-                  (isTeachersLink && location.pathname.includes('/teachers')) ||
-                  (isCoursesLink && location.pathname.includes('/courses/')) ||
-                  (isGovernanceLink && location.pathname.includes('/audit-logs'));
+                  (isStudentsLink && location.pathname.includes('/students'));
                 return [
                   'flex items-center rounded-xl transition-all duration-300 relative group',
                   collapsed ? 'justify-center px-0 py-2' : 'justify-between px-2.5 py-2',
@@ -219,10 +204,7 @@ const AdminSidebar = () => {
               style={({ isActive }) => {
                 const active =
                   isActive ||
-                  (isStudentsLink && location.pathname.includes('/students')) ||
-                  (isTeachersLink && location.pathname.includes('/teachers')) ||
-                  (isCoursesLink && location.pathname.includes('/courses/')) ||
-                  (isGovernanceLink && location.pathname.includes('/audit-logs'));
+                  (isStudentsLink && location.pathname.includes('/students'));
                 if (active) {
                   return {
                     background: `linear-gradient(135deg, rgba(${accent.rgb},0.22), rgba(${accent.rgb},0.10))`,
@@ -236,10 +218,7 @@ const AdminSidebar = () => {
               {({ isActive }) => {
                 const active =
                   isActive ||
-                  (isStudentsLink && location.pathname.includes('/students')) ||
-                  (isTeachersLink && location.pathname.includes('/teachers')) ||
-                  (isCoursesLink && location.pathname.includes('/courses/')) ||
-                  (isGovernanceLink && location.pathname.includes('/audit-logs'));
+                  (isStudentsLink && location.pathname.includes('/students'));
                 return (
                   <>
                     {active && !collapsed && (
@@ -334,6 +313,7 @@ const AdminSidebar = () => {
         </SidebarTooltip>
       </div>
     </aside>
+    </>
   );
 };
 

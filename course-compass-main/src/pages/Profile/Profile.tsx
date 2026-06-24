@@ -3,7 +3,6 @@ import { useAuth } from "@/store/AuthContext";
 import { profileApi } from "@/api/profile.api";
 import { User, Lock, Save, Mail, Edit3, Camera, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-import { apiErrorMessage } from "@/utils/apiError";
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -36,8 +35,8 @@ const Profile = () => {
       const res = await profileApi.updateProfile({ name, bio });
       updateUser({ name: res.data.data.name, bio: res.data.data.bio });
       toast.success("Profile updated successfully");
-    } catch (error: unknown) {
-      toast.error(apiErrorMessage(error, "Failed to update profile"));
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Failed to update profile");
     } finally {
       setIsSavingInfo(false);
     }
@@ -65,8 +64,8 @@ const Profile = () => {
       const res = await profileApi.updateAvatar(formData);
       updateUser({ avatar: res.data.avatarUrl });
       toast.success("Profile picture updated");
-    } catch (error: unknown) {
-      toast.error(apiErrorMessage(error, "Failed to update profile picture"));
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Failed to update profile picture");
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -90,8 +89,8 @@ const Profile = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: unknown) {
-      toast.error(apiErrorMessage(error, "Failed to update password"));
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Failed to update password");
     } finally {
       setIsSavingPassword(false);
     }
@@ -140,7 +139,7 @@ const Profile = () => {
                 <div className="relative group">
                   <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl uppercase border-2 border-primary/20 overflow-hidden">
                     {user.avatar ? (
-                      <img src={`${import.meta.env.VITE_BACKEND_URL || "http://localhost:5001"}${user.avatar}`} alt={user.name} className="w-full h-full object-cover" />
+                      <img src={`http://localhost:5000${user.avatar}`} alt={user.name} className="w-full h-full object-cover" />
                     ) : (
                       user.name.charAt(0)
                     )}

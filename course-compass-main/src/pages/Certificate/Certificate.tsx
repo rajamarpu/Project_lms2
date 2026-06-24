@@ -2,13 +2,10 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { courseApi } from "@/api/course.api";
 import { ChevronLeft, Download, Award, Loader2 } from "lucide-react";
-import { apiErrorMessage } from "@/utils/apiError";
-
-type EnrollmentCertificate = { id: string; updatedAt: string; user?: { name?: string }; course?: { title?: string; instructor?: { name?: string } } };
 
 export const Certificate = () => {
   const { courseId } = useParams();
-  const [enrollment, setEnrollment] = useState<EnrollmentCertificate | null>(null);
+  const [enrollment, setEnrollment] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,8 +20,8 @@ export const Certificate = () => {
         } else {
           setError("Certificate not found or you have not completed this course yet.");
         }
-      } catch (err: unknown) {
-        setError(apiErrorMessage(err, "Failed to load certificate"));
+      } catch (err: any) {
+        setError(err.response?.data?.error || "Failed to load certificate");
       } finally {
         setIsLoading(false);
       }

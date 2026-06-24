@@ -2,7 +2,7 @@ import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   ArrowLeft, Star, Clock, BookOpen, Users, Award, CheckCircle2, PlayCircle,
-  Heart, HeartOff, Loader2
+  Heart, HeartOff, Loader2, CreditCard
 } from "lucide-react";
 import {
   AlertDialog,
@@ -17,24 +17,26 @@ import {
 import { courseApi } from "@/api/course.api";
 import { useAuth } from "@/store/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { platformApi } from "@/api/platform.api";
-import axios from "axios";
 
-const tabs = ["About", "Outcomes", "Curriculum", "Instructors", "Reviews"] as const;
+const tabs = ["About", "Outcomes", "Curriculum", "Instructors"] as const;
 type Tab = typeof tabs[number];
-type Lesson = { id: string; title: string; content?: string; order: number };
-type Enrollment = { courseId: string; mentor?: string };
-type CourseDetail = {
-  id: string; title: string; description: string; category: string; level: string; thumbnail?: string;
-  rating: number; duration?: string; price: number; outcomes: string[]; lessons: Lesson[];
-  celebrityTeacher?: string; instructor?: { name: string }; instructors?: Array<{ name: string; role: string; avatar: string }>;
-  _count?: { enrollments: number };
-};
-type Review = { id: string; rating: number; comment?: string; createdAt: string; user: { name: string; avatar?: string } };
 
 // ---------------------------------------------------------------------------
 // Wishlist helpers (localStorage)
 // ---------------------------------------------------------------------------
+const WISHLIST_KEY = "lms_wishlist";
+
+const getWishlist = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(WISHLIST_KEY) || "[]");
+  } catch {
+    return [];
+  }
+};
+
+const saveWishlist = (ids: string[]) =>
+  localStorage.setItem(WISHLIST_KEY, JSON.stringify(ids));
+
 // ---------------------------------------------------------------------------
 
 const CourseDetails = () => {
@@ -44,7 +46,7 @@ const CourseDetails = () => {
   const isInstructorOrAdmin = user?.role === "admin";
   const { toast } = useToast();
 
-  const [course, setCourse] = useState<CourseDetail | null>(null);
+  const [course, setCourse] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [tab, setTab] = useState<Tab>("About");
@@ -52,6 +54,7 @@ const CourseDetails = () => {
   // Enroll state
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrollLoading, setEnrollLoading] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   
   // Mentor Selection State
   const [mentorSelectionOpen, setMentorSelectionOpen] = useState(false);
@@ -61,8 +64,6 @@ const CourseDetails = () => {
   // Wishlist state
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
 
   // -------------------------------------------------------------------------
   // Fetch course
@@ -82,25 +83,25 @@ const CourseDetails = () => {
     if (id) fetchCourse();
   }, [id]);
 
-  useEffect(() => { if (id) platformApi.reviews(id).then(({ data }) => setReviews(data.data)).catch(() => {}); }, [id]);
-
   // -------------------------------------------------------------------------
   // Check enrollment & wishlist status once course + auth are ready
   // -------------------------------------------------------------------------
   useEffect(() => {
     if (!id) return;
 
+    // Wishlist (localStorage)
+    setIsWishlisted(getWishlist().includes(id));
+
     // Enrollment (backend)
     if (isAuthenticated) {
-      platformApi.bookmarks().then(({ data }) => setIsWishlisted(data.data.some((bookmark: { courseId: string }) => bookmark.courseId === id))).catch(() => {});
       courseApi
         .getMyEnrollments()
         .then((res) => {
-          const enrollment = res.data.data?.find((e: Enrollment) => e.courseId === id);
+          const enrollment = res.data.data?.find((e: any) => e.courseId === id);
           if (enrollment) {
             setIsEnrolled(true);
             if (enrollment.mentor) {
-               setCourse((prev) => prev ? ({
+               setCourse((prev: any) => prev ? ({
                   ...prev,
                   instructors: [{
                     name: enrollment.mentor,
@@ -140,10 +141,10 @@ const CourseDetails = () => {
   const proceedAfterMentorSelection = () => {
     setMentorSelectionOpen(false);
     if (course.price && course.price > 0) {
-      toast({ title: "Purchase unavailable", description: "Paid enrollment is disabled until a verified payment provider is configured.", variant: "destructive" });
-      return;
+      setCheckoutOpen(true);
+    } else {
+      handleEnroll();
     }
-    handleEnroll();
   };
 
   const handleEnroll = async () => {
@@ -153,7 +154,7 @@ const CourseDetails = () => {
       await courseApi.enrollInCourse(id!, { mentor: selectedMentor });
       setIsEnrolled(true);
       if (selectedMentor) {
-        setCourse((prev) => prev ? ({
+        setCourse((prev: any) => prev ? ({
             ...prev,
             instructors: [{
               name: selectedMentor,
@@ -166,9 +167,9 @@ const CourseDetails = () => {
         title: "Enrolled successfully! 🎉",
         description: "You are now enrolled. Head to your dashboard to start learning.",
       });
-    } catch (err: unknown) {
+    } catch (err: any) {
       const msg =
-        (axios.isAxiosError(err) && err.response?.data?.error) || "Failed to enroll. Please try again.";
+        err?.response?.data?.error || "Failed to enroll. Please try again.";
       toast({ title: "Enrollment failed", description: msg, variant: "destructive" });
     } finally {
       setEnrollLoading(false);
@@ -199,7 +200,7 @@ const CourseDetails = () => {
   // -------------------------------------------------------------------------
   // Wishlist handler
   // -------------------------------------------------------------------------
-  const handleWishlist = async () => {
+  const handleWishlist = () => {
     if (!isAuthenticated) {
       toast({
         title: "Login required",
@@ -211,28 +212,23 @@ const CourseDetails = () => {
     }
 
     setWishlistLoading(true);
-    try {
-      const { data } = await platformApi.toggleBookmark(id!);
-      setIsWishlisted(data.data.bookmarked);
-      toast({ title: data.data.bookmarked ? "Added to Wishlist" : "Removed from Wishlist" });
-    } catch {
-      toast({ title: "Wishlist update failed", description: "Please try again.", variant: "destructive" });
-    } finally {
-      setWishlistLoading(false);
-    }
-  };
+    const current = getWishlist();
+    let updated: string[];
 
-  const submitReview = async (event: React.FormEvent) => {
-    event.preventDefault();
-    try {
-      await platformApi.submitReview(id!, reviewForm);
-      const { data } = await platformApi.reviews(id!);
-      setReviews(data.data);
-      setReviewForm({ rating: 5, comment: "" });
-      toast({ title: "Review saved" });
-    } catch (error) {
-      toast({ title: "Review unavailable", description: "Only enrolled learners can review this course.", variant: "destructive" });
+    if (isWishlisted) {
+      updated = current.filter((cid) => cid !== id);
+      saveWishlist(updated);
+      setIsWishlisted(false);
+      toast({ title: "Removed from Wishlist", description: "Course removed from your wishlist." });
+    } else {
+      updated = [...current, id!];
+      saveWishlist(updated);
+      setIsWishlisted(true);
+      toast({ title: "Added to Wishlist ❤️", description: "Course saved to your wishlist." });
     }
+
+    // Small visual delay for feedback
+    setTimeout(() => setWishlistLoading(false), 300);
   };
 
   // -------------------------------------------------------------------------
@@ -411,6 +407,33 @@ const CourseDetails = () => {
                       </AlertDialogContent>
                     </AlertDialog>
 
+                    {/* Simulated Checkout Modal */}
+                    <AlertDialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2">
+                            <CreditCard className="w-5 h-5 text-primary" /> Confirm Purchase
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            You are about to purchase <strong>{course.title}</strong> for <strong>${course.price?.toFixed(2)}</strong>.
+                            <br /><br />
+                            (Note: This is a simulated checkout. No real payment will be processed.)
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => {
+                              setCheckoutOpen(false);
+                              handleEnroll();
+                            }}
+                            className="btn-primary"
+                          >
+                            Pay ${course.price?.toFixed(2)} & Enroll
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </>
                 )}
 
@@ -472,7 +495,7 @@ const CourseDetails = () => {
             )}
             {tab === "Curriculum" && (
               <div className="space-y-3">
-                {(Array.isArray(course.lessons) ? course.lessons : []).map((lesson, i: number) => (
+                {(Array.isArray(course.lessons) ? course.lessons : []).map((lesson: any, i: number) => (
                   <div key={lesson.id || i} className="glass-card p-5 flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                       <span className="text-sm font-bold text-primary">{i + 1}</span>
@@ -504,12 +527,6 @@ const CourseDetails = () => {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-            {tab === "Reviews" && (
-              <div className="space-y-5">
-                {isEnrolled && <form onSubmit={submitReview} className="glass-card space-y-4 p-5"><h3 className="font-display font-semibold">Share your experience</h3><label className="block text-sm font-medium">Rating<select className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3" value={reviewForm.rating} onChange={(event) => setReviewForm({ ...reviewForm, rating: Number(event.target.value) })}>{[5,4,3,2,1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}</select></label><label className="block text-sm font-medium">Comment<textarea className="mt-2 min-h-24 w-full rounded-xl border border-border bg-background p-3" value={reviewForm.comment} onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })} /></label><button type="submit" className="btn-primary">Save review</button></form>}
-                {reviews.length ? reviews.map((review) => <article key={review.id} className="glass-card p-5"><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">{review.user.name}</h3><span className="text-sm font-semibold text-primary">{review.rating}/5</span></div>{review.comment && <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>}<time className="mt-2 block text-xs text-muted-foreground" dateTime={review.createdAt}>{new Date(review.createdAt).toLocaleDateString()}</time></article>) : <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">No reviews yet.</p>}
               </div>
             )}
           </div>

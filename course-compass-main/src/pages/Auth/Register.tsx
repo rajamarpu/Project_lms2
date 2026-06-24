@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, UserPlus, Sparkles, Mail, Lock, User, GraduationCap, Clock } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
-import { apiErrorMessage } from "@/utils/apiError";
 
 const Register = () => {
   const { register } = useAuth();
@@ -30,10 +29,7 @@ const Register = () => {
     if (!form.name.trim()) return "Full name is required.";
     if (!form.email.trim()) return "Email is required.";
     if (!/^\S+@\S+\.\S+$/.test(form.email)) return "Please enter a valid email address.";
-    if (form.password.length < 8) return "Password must be at least 8 characters.";
-    if (!/[a-z]/.test(form.password)) return "Password must include a lowercase letter.";
-    if (!/[A-Z]/.test(form.password)) return "Password must include an uppercase letter.";
-    if (!/[0-9]/.test(form.password)) return "Password must include a number.";
+    if (form.password.length < 6) return "Password must be at least 6 characters.";
     if (form.password !== form.confirmPassword) return "Passwords do not match.";
     return null;
   };
@@ -50,8 +46,8 @@ const Register = () => {
       } else {
         navigate("/dashboard");
       }
-    } catch (err: unknown) {
-      setError(apiErrorMessage(err, "Registration failed. Check your connection and try again."));
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Registration failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -60,8 +56,9 @@ const Register = () => {
   const passwordStrength = () => {
     const p = form.password;
     if (!p) return null;
-    if (p.length < 8) return { label: "Too short", color: "bg-destructive", width: "w-1/4" };
-    if (!/[a-z]/.test(p) || !/[A-Z]/.test(p) || !/[0-9]/.test(p)) return { label: "Needs mixed case and a number", color: "bg-yellow-500", width: "w-3/4" };
+    if (p.length < 6) return { label: "Too short", color: "bg-destructive", width: "w-1/4" };
+    if (p.length < 8) return { label: "Weak", color: "bg-orange-500", width: "w-1/2" };
+    if (!/[A-Z]/.test(p) || !/[0-9]/.test(p)) return { label: "Medium", color: "bg-yellow-500", width: "w-3/4" };
     return { label: "Strong", color: "bg-secondary", width: "w-full" };
   };
   const strength = passwordStrength();
@@ -161,8 +158,7 @@ const Register = () => {
                   type={showPassword ? "text" : "password"}
                   value={form.password}
                   onChange={handleChange}
-                  placeholder="8+ characters, mixed case and number"
-                  minLength={8}
+                  placeholder="Min. 6 characters"
                   className="w-full bg-muted/40 border border-border rounded-lg pl-10 pr-12 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
                   autoComplete="new-password"
                 />
@@ -206,7 +202,6 @@ const Register = () => {
                       : "border-border focus:border-primary focus:ring-primary/20"
                   }`}
                   autoComplete="new-password"
-                  minLength={8}
                 />
                 <button
                   type="button"

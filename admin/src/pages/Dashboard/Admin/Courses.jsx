@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdClose } from 'react-icons/md';
 import CourseDrawer from '../../../components/admin/courses/CourseDrawer';
@@ -7,17 +7,20 @@ import CourseKpiRow from '../../../components/admin/courses/CourseKpiRow';
 import TopPerformingCourses from '../../../components/admin/courses/TopPerformingCourses';
 import CoursesFilters from '../../../components/admin/courses/CoursesFilters';
 import CourseGrid from '../../../components/admin/courses/CourseGrid';
-import {
-  loadCourses,
-  normalizeCourse,
-  getCategories,
-  computeRevenue,
-} from '../../../utils/courseUtils';
+import { getCategories, computeRevenue } from '../../../utils/courseUtils';
 import { exportToCSV } from '../../../utils/export';
-import { publishLearnerNotification } from '../../../utils/learnerNotifications';
+import {
+  fetchAdminCourses,
+  updateCourseApprovalStatus,
+  deleteAdminCourseApi,
+} from '../../../api/adminCourses.api';
+import { LoadingSpinner, EmptyState, ErrorState } from '../../../components/common/States';
 
 const Courses = () => {
-  const [courses, setCourses] = useState(loadCourses);
+  const [courses, setCourses] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
@@ -26,9 +29,22 @@ const Courses = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
 
+  const loadCourseData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data } = await fetchAdminCourses();
+      setCourses(data);
+    } catch (err) {
+      setError(err.message || 'Could not load courses.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    localStorage.setItem('lms_courses_data', JSON.stringify(courses));
-  }, [courses]);
+    loadCourseData();
+  }, [loadCourseData]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -59,10 +75,14 @@ const Courses = () => {
 
   const showNotice = (message) => setNotice(message);
 
-  const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this course?')) {
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this course?')) return;
+    try {
+      await deleteAdminCourseApi(id);
       setCourses((prev) => prev.filter((c) => c.id !== id));
       showNotice('Course deleted.');
+    } catch (err) {
+      showNotice(err.message || 'Could not delete course.');
     }
   };
 
@@ -81,43 +101,28 @@ const Courses = () => {
     setIsDrawerOpen(false);
   };
 
-  const handleSaveCourse = (savedCourse) => {
-    const isUpdate = Boolean(selectedCourse);
-    setCourses((prev) => {
-      const normalized = normalizeCourse(
-        savedCourse,
-        prev.findIndex((c) => c.id === savedCourse.id)
+  // Approve / reject is the one course-level write the backend currently
+  // exposes (PUT /admin/courses/:id with { status }). Full course
+  // creation/editing (title, lessons, pricing) goes through the
+  // instructor-facing course endpoints, not this admin panel, so we
+  // surface that distinction instead of silently no-op-ing the save.
+  const handleSaveCourse = async (savedCourse) => {
+    if (!selectedCourse) {
+      showNotice('Creating courses happens from the instructor dashboard — admins approve/reject here.');
+      handleCloseDrawer();
+      return;
+    }
+    try {
+      const newStatus = savedCourse.active ? 'approved' : 'rejected';
+      await updateCourseApprovalStatus(selectedCourse.id, newStatus);
+      setCourses((prev) =>
+        prev.map((c) => (c.id === selectedCourse.id ? { ...c, ...savedCourse, status: newStatus } : c))
       );
-      const exists = prev.some((c) => c.id === savedCourse.id);
-      if (exists) {
-        return prev.map((c) => (c.id === savedCourse.id ? normalized : c));
-      }
-      return [normalized, ...prev];
-    });
-    showNotice(selectedCourse ? 'Course updated.' : 'Course created.');
-    publishLearnerNotification({
-      title: isUpdate ? 'Course content updated' : 'New course available',
-      message: `${savedCourse.title} ${isUpdate ? 'has new course content.' : 'is now available to explore.'}`,
-      type: 'Course',
-      href: `/courses/${savedCourse.id}`,
-    });
-  };
-
-  const handleClone = (course) => {
-    const clone = normalizeCourse(
-      {
-        ...course,
-        id: Date.now(),
-        title: `${course.title} (Copy)`,
-        students: 0,
-        completion: 0,
-        active: false,
-        revenue: 0,
-      },
-      courses.length
-    );
-    setCourses((prev) => [clone, ...prev]);
-    showNotice('Course cloned as draft.');
+      showNotice('Course status updated.');
+    } catch (err) {
+      showNotice(err.message || 'Could not update course.');
+    }
+    handleCloseDrawer();
   };
 
   const handleExport = () => {
@@ -125,12 +130,10 @@ const Courses = () => {
       filtered,
       [
         'title',
-        'slug',
         'level',
         'xp',
         'category',
         'lessons',
-        'projects',
         'rating',
         'students',
         'completion',
@@ -138,7 +141,6 @@ const Courses = () => {
         'active',
         'teacher',
         'price',
-        'discountPrice',
         'revenue',
       ],
       'lms-courses.csv'
@@ -147,6 +149,22 @@ const Courses = () => {
   };
 
   const hasFilters = Boolean(searchQuery || categoryFilter || levelFilter);
+
+  if (isLoading) {
+    return (
+      <div className="admin-page relative z-10 pb-16 min-h-full rounded-2xl p-4 md:p-6 -m-4 md:-m-6 border border-[var(--admin-border)] shadow-[var(--admin-shadow-card)] bg-[var(--admin-page-panel)]">
+        <LoadingSpinner fullPage label="Loading courses…" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="admin-page relative z-10 pb-16 min-h-full rounded-2xl p-4 md:p-6 -m-4 md:-m-6 border border-[var(--admin-border)] shadow-[var(--admin-shadow-card)] bg-[var(--admin-page-panel)]">
+        <ErrorState message={error} onRetry={loadCourseData} />
+      </div>
+    );
+  }
 
   return (
     <div className="admin-page space-y-6 md:space-y-8 animate-fade-in relative z-10 pb-16 min-h-full rounded-2xl p-4 md:p-6 -m-4 md:-m-6 border border-[var(--admin-border)] shadow-[var(--admin-shadow-card)] bg-[var(--admin-page-panel)]">
@@ -173,16 +191,20 @@ const Courses = () => {
         resultCount={filtered.length}
       />
 
-      <CourseGrid
-        courses={filtered}
-        onCreateCourse={handleOpenAddDrawer}
-        onEdit={handleOpenEditDrawer}
-        onClone={handleClone}
-        onAnalytics={() => showNotice('Course analytics — opening soon.')}
-        onPreview={() => showNotice('Course preview — opening soon.')}
-        onDelete={handleDelete}
-        hasFilters={hasFilters}
-      />
+      {filtered.length === 0 ? (
+        <EmptyState title="No courses found" description="Try adjusting your search or filters." />
+      ) : (
+        <CourseGrid
+          courses={filtered}
+          onCreateCourse={handleOpenAddDrawer}
+          onEdit={handleOpenEditDrawer}
+          onClone={() => showNotice('Cloning requires the instructor dashboard.')}
+          onAnalytics={() => showNotice('Course analytics — opening soon.')}
+          onPreview={() => showNotice('Course preview — opening soon.')}
+          onDelete={handleDelete}
+          hasFilters={hasFilters}
+        />
+      )}
 
       <CourseDrawer
         isOpen={isDrawerOpen}

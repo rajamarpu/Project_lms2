@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Lock, Eye, EyeOff, CheckCircle2, Sparkles } from "lucide-react";
 import axios from "axios";
-import { apiErrorMessage } from "@/utils/apiError";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const ResetPassword = () => {
   const { id, token } = useParams<{ id: string; token: string }>();
@@ -48,9 +47,9 @@ const ResetPassword = () => {
       setTimeout(() => {
         navigate("/login");
       }, 3000);
-    } catch (err: unknown) {
+    } catch (err: any) {
       setStatus("error");
-      setMessage(apiErrorMessage(err, "Invalid or expired token. Please try again."));
+      setMessage(err?.response?.data?.error || "Invalid or expired token. Please try again.");
     }
   };
 

@@ -100,7 +100,7 @@ const GlobalSearch = () => {
   let runningIndex = -1;
 
   return (
-    <div ref={containerRef} className="relative w-80 group">
+    <div ref={containerRef} className="relative w-full max-w-[180px] sm:max-w-xs md:w-80 group">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
         <MdSearch
           className="text-[var(--admin-text-muted)] group-focus-within:text-[#7C3AED] transition-colors"

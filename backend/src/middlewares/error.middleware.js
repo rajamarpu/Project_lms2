@@ -25,8 +25,7 @@ const errorHandler = (err, req, res, next) => {
 
   // Zod Validation Error
   if (err.name === 'ZodError') {
-    const issues = err.issues || err.errors || [];
-    const message = issues.map(val => val.message).join(', ') || 'Invalid request data';
+    const message = err.errors.map(val => val.message).join(', ');
     error = new ErrorResponse(message, 400);
   }
 

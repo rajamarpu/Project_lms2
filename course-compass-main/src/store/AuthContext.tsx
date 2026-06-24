@@ -8,9 +8,6 @@ interface User {
   role: string;
   bio?: string;
   avatar?: string;
-  hoursLearned?: number;
-  certificates?: number;
-  streak?: number;
 }
 
 interface AuthContextType {

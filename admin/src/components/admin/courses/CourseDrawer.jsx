@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MdClose, MdUploadFile, MdBook, MdTitle, MdDescription,
@@ -55,7 +55,6 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
   const [teachers, setTeachers] = useState(DEFAULT_TEACHERS);
   const [searchTeacherQuery, setSearchTeacherQuery] = useState('');
   const [isTeacherDropdownOpen, setIsTeacherDropdownOpen] = useState(false);
-  const [errors, setErrors] = useState({});
   const teacherDropdownRef = useRef(null);
 
   // Load actual teachers from local storage if available
@@ -115,7 +114,6 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
         avatar: courseToEdit.avatar || null
       });
       setAvatarPreview(courseToEdit.avatar || null);
-      setErrors({});
     } else {
       // Reset form
       setForm({
@@ -139,7 +137,6 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
         avatar: null
       });
       setAvatarPreview(null);
-      setErrors({});
     }
   }, [courseToEdit, isOpen, teachers]);
 
@@ -163,7 +160,6 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
       .replace(/[^a-z0-9\s-]/g, '') // remove invalid chars
       .replace(/\s+/g, '-'); // collapse spaces to hyphens
 
-    setErrors(prev => ({ ...prev, title: undefined }));
     setForm(prev => ({
       ...prev,
       title: titleVal,
@@ -183,15 +179,8 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
   };
 
   const handleSave = (statusOverride) => {
-    const nextErrors = {};
-    if (!form.title.trim()) nextErrors.title = 'Course name is required.';
-    if (!form.shortDesc.trim()) nextErrors.shortDesc = 'Short description is required.';
-    if (form.discountPrice && form.price && Number(form.discountPrice) > Number(form.price)) {
-      nextErrors.discountPrice = 'Discount price should not exceed the base price.';
-    }
-
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
+    if (!form.title || !form.shortDesc) {
+      alert("Please fill in all required fields marked with *");
       return;
     }
 
@@ -255,20 +244,16 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
     onClose();
   };
 
-  const set = (key) => (e) => {
-    setErrors(prev => ({ ...prev, [key]: undefined }));
-    setForm(prev => ({ ...prev, [key]: e.target.value }));
-  };
+  const set = (key) => (e) => setForm(prev => ({ ...prev, [key]: e.target.value }));
 
   // Filtered teachers list based on search
   const filteredTeachers = teachers.filter(t => 
     t.name.toLowerCase().includes(searchTeacherQuery.toLowerCase())
   );
 
-  const inputCls = 'admin-drawer-input';
-  const textareaCls = 'admin-drawer-input min-h-28 resize-none';
-  const labelCls = 'admin-drawer-label';
-  const errorCls = 'mt-1.5 text-xs font-medium text-[var(--danger)]';
+  const inputCls = 'w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 focus:bg-white/8 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300';
+  const textareaCls = 'w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 focus:bg-white/8 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300 h-28 resize-none';
+  const labelCls = 'text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block';
 
   return (
     <AnimatePresence>
@@ -289,19 +274,20 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 26, stiffness: 200 }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="course-drawer-title"
-            className="admin-course-drawer fixed right-0 top-0 h-full w-full max-w-[560px] border-l z-[110] flex flex-col overflow-hidden"
+            className="fixed right-0 top-0 h-full w-full max-w-[520px] bg-[#070b16] border-l border-white/10 z-[110] shadow-[-24px_0_60px_rgba(0,0,0,0.7)] flex flex-col rounded-l-[32px] overflow-hidden"
           >
+            {/* Ambient Background Glow Inside Drawer */}
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none -z-10" />
+            <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none -z-10" />
+
             {/* ── STICKY HEADER ── */}
-            <div className="relative admin-drawer-header px-5 py-5 sm:px-8 sm:py-6 flex-shrink-0 flex items-center justify-between gap-4 border-b">
+            <div className="relative bg-gradient-to-r from-blue-600/90 via-indigo-600/90 to-purple-600/90 backdrop-blur-md px-8 py-6 flex-shrink-0 flex items-center justify-between border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white border border-white/20 shadow-md">
                   <MdBook size={24} />
                 </div>
                 <div>
-                  <h2 id="course-drawer-title" className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
+                  <h2 className="text-xl font-extrabold text-white tracking-tight">
                     {courseToEdit ? 'Edit Course Details' : 'Add New Course'}
                   </h2>
                   <p className="text-blue-100 text-xs mt-0.5">
@@ -310,9 +296,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                 </div>
               </div>
               <button
-                type="button"
                 onClick={onClose}
-                aria-label="Close course drawer"
                 className="w-9 h-9 rounded-full bg-black/20 hover:bg-white/10 text-white flex items-center justify-center transition-all hover:rotate-90 duration-300 border border-white/10"
               >
                 <MdClose size={20} />
@@ -320,7 +304,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
             </div>
 
             {/* ── SCROLLABLE FORM BODY ── */}
-            <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-8 sm:py-7 space-y-7 custom-scrollbar relative z-10">
+            <div className="flex-1 overflow-y-auto px-8 py-7 space-y-7 custom-scrollbar relative z-10">
               
               {/* Animation Group Wrapper */}
               <motion.div
@@ -341,7 +325,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                 {/* ── SECTION 1: COURSE THUMBNAIL ── */}
                 <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
                   <label className={labelCls}>Course Thumbnail</label>
-                  <label className="relative w-full h-44 rounded-xl border-2 border-dashed border-[color-mix(in_srgb,var(--accent)_35%,var(--border))] hover:border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] flex flex-col items-center justify-center text-[var(--admin-text-secondary)] hover:text-[var(--accent)] transition-all duration-300 cursor-pointer group overflow-hidden">
+                  <label className="relative w-full h-44 rounded-2xl border-2 border-dashed border-purple-500/30 hover:border-purple-500/60 bg-purple-500/5 flex flex-col items-center justify-center text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 transition-all duration-300 cursor-pointer group overflow-hidden shadow-lg shadow-purple-500/5">
                     {avatarPreview ? (
                       <div className="w-full h-full relative">
                         <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
@@ -353,11 +337,11 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                     ) : (
                       <div className="flex flex-col items-center justify-center p-6 text-center">
                         <MdUploadFile size={36} className="text-purple-400/80 mb-2 group-hover:-translate-y-1.5 transition-transform duration-300" />
-                        <span className="text-sm font-bold text-[var(--admin-text-primary)]">Drag and drop or browse</span>
-                        <span className="text-[11px] text-[var(--admin-text-muted)] mt-1">Supports PNG or JPG up to 2MB</span>
+                        <span className="text-sm font-bold text-white">Drag & drop or browse</span>
+                        <span className="text-[11px] text-gray-500 mt-1">Supports PNG, JPG (Max 2MB)</span>
                       </div>
                     )}
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" aria-label="Upload course thumbnail" />
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                   </label>
                 </motion.div>
 
@@ -366,7 +350,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                   variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
                   className="space-y-5"
                 >
-                  <h4 className="admin-drawer-section-title">
+                  <h4 className="text-xs font-extrabold text-purple-400 uppercase tracking-widest border-b border-white/5 pb-2">
                     1. Basic Information
                   </h4>
 
@@ -380,12 +364,10 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                         required
                         value={form.title}
                         onChange={handleTitleChange}
-                        aria-invalid={Boolean(errors.title)}
                         placeholder="e.g. Master Next.js and Server Actions"
                         className={`${inputCls} pl-11`}
                       />
                     </div>
-                    {errors.title && <p className={errorCls}>{errors.title}</p>}
                   </div>
 
                   {/* Course Slug */}
@@ -398,7 +380,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                         readOnly
                         value={form.slug}
                         placeholder="e.g. master-nextjs-and-server-actions"
-                        className="admin-drawer-input pl-11 opacity-70 cursor-not-allowed select-none"
+                        className="w-full bg-white/5 border border-white/5 text-gray-500 rounded-xl px-4 py-3 pl-11 text-sm focus:outline-none cursor-not-allowed select-none"
                       />
                     </div>
                   </div>
@@ -412,13 +394,11 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                         required
                         value={form.shortDesc}
                         onChange={set('shortDesc')}
-                        aria-invalid={Boolean(errors.shortDesc)}
                         placeholder="Brief overview summarizing the syllabus and core learning target (max 150 chars)."
                         maxLength={150}
                         className={`${textareaCls} pl-11 pt-4 h-20`}
                       />
                     </div>
-                    {errors.shortDesc && <p className={errorCls}>{errors.shortDesc}</p>}
                   </div>
 
                   {/* Full Description */}
@@ -438,11 +418,11 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                   variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
                   className="space-y-5"
                 >
-                  <h4 className="admin-drawer-section-title">
+                  <h4 className="text-xs font-extrabold text-purple-400 uppercase tracking-widest border-b border-white/5 pb-2">
                     2. Course Details
                   </h4>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-4">
                     {/* Level */}
                     <div>
                       <label className={labelCls}>Level *</label>
@@ -451,7 +431,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                         <select
                           value={form.level}
                           onChange={set('level')}
-                          className="admin-drawer-input pl-11 pr-10 cursor-pointer appearance-none"
+                          className="w-full bg-[#111827] border border-white/10 rounded-xl py-3 pl-11 pr-10 text-sm text-white focus:outline-none focus:border-purple-500 transition-all cursor-pointer appearance-none"
                         >
                           {LEVELS.map(lvl => <option key={lvl} value={lvl}>{lvl}</option>)}
                         </select>
@@ -467,7 +447,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                         <select
                           value={form.category}
                           onChange={set('category')}
-                          className="admin-drawer-input pl-11 pr-10 cursor-pointer appearance-none"
+                          className="w-full bg-[#111827] border border-white/10 rounded-xl py-3 pl-11 pr-10 text-sm text-white focus:outline-none focus:border-purple-500 transition-all cursor-pointer appearance-none"
                         >
                           {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                         </select>
@@ -476,7 +456,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-4">
                     {/* Duration */}
                     <div>
                       <label className={labelCls}>Duration (Hours)</label>
@@ -514,7 +494,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                   variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
                   className="space-y-4"
                 >
-                  <h4 className="admin-drawer-section-title">
+                  <h4 className="text-xs font-extrabold text-purple-400 uppercase tracking-widest border-b border-white/5 pb-2">
                     3. Teacher Assignment
                   </h4>
 
@@ -541,8 +521,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                         <button
                           type="button"
                           onClick={() => setIsTeacherDropdownOpen(!isTeacherDropdownOpen)}
-                          aria-label="Search teachers"
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--admin-text-muted)] hover:text-[var(--admin-text-primary)]"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                         >
                           <MdSearch size={18} />
                         </button>
@@ -555,7 +534,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 5 }}
-                            className="absolute z-50 left-0 right-0 mt-1 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto custom-scrollbar border bg-[var(--admin-surface-raised)] border-[var(--admin-border)]"
+                            className="absolute z-50 left-0 right-0 mt-1 bg-[#101726] border border-white/10 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto custom-scrollbar"
                           >
                             {filteredTeachers.length > 0 ? (
                               filteredTeachers.map((t) => (
@@ -566,14 +545,14 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                                     setForm(prev => ({ ...prev, teacher: t.name }));
                                     setIsTeacherDropdownOpen(false);
                                   }}
-                                  className="w-full text-left px-4 py-3 text-xs text-[var(--admin-text-primary)] hover:bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] transition-all border-b border-[var(--admin-border-subtle)] flex items-center justify-between"
+                                  className="w-full text-left px-4 py-3 text-xs text-white hover:bg-purple-600/20 hover:text-purple-300 transition-all border-b border-white/5 flex items-center justify-between"
                                 >
                                   <span>{t.name}</span>
                                   {form.teacher === t.name && <MdCheckCircle size={14} className="text-purple-400" />}
                                 </button>
                               ))
                             ) : (
-                              <div className="px-4 py-3 text-xs text-[var(--admin-text-muted)] text-center">
+                              <div className="px-4 py-3 text-xs text-gray-500 text-center">
                                 No mentors match "{searchTeacherQuery}"
                               </div>
                             )}
@@ -589,14 +568,14 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                   variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
                   className="space-y-5"
                 >
-                  <h4 className="admin-drawer-section-title">
+                  <h4 className="text-xs font-extrabold text-purple-400 uppercase tracking-widest border-b border-white/5 pb-2">
                     4. Pricing
                   </h4>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-4">
                     {/* Price */}
                     <div>
-                      <label className={labelCls}>Course Price (INR)</label>
+                      <label className={labelCls}>Course Price (₹)</label>
                       <div className="relative">
                         <MdAttachMoney className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                         <input
@@ -611,19 +590,17 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
 
                     {/* Discount Price */}
                     <div>
-                      <label className={labelCls}>Discount Price (INR)</label>
+                      <label className={labelCls}>Discount Price (₹)</label>
                       <div className="relative">
                         <MdLocalOffer className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                         <input
                           type="number"
                           value={form.discountPrice}
                           onChange={set('discountPrice')}
-                          aria-invalid={Boolean(errors.discountPrice)}
                           placeholder="e.g. 299"
                           className={`${inputCls} pl-11`}
                         />
                       </div>
-                      {errors.discountPrice && <p className={errorCls}>{errors.discountPrice}</p>}
                     </div>
                   </div>
                 </motion.div>
@@ -633,11 +610,11 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                   variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
                   className="space-y-5"
                 >
-                  <h4 className="admin-drawer-section-title">
+                  <h4 className="text-xs font-extrabold text-purple-400 uppercase tracking-widest border-b border-white/5 pb-2">
                     5. Statistics & Visibility
                   </h4>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-4">
                     {/* Lessons */}
                     <div>
                       <label className={labelCls}>Total Lessons</label>
@@ -670,10 +647,10 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                   </div>
 
                   {/* Certificate available */}
-                  <div className="admin-toggle-row">
+                  <div className="flex items-center justify-between bg-white/5 px-5 py-3.5 rounded-xl border border-white/5 hover:bg-white/8 transition-all">
                     <div>
-                      <span className="text-sm font-bold text-[var(--admin-text-primary)] block">Certificate Available</span>
-                      <span className="text-[10px] text-[var(--admin-text-muted)]">Provide verified completion certificate</span>
+                      <span className="text-sm font-bold text-white block">Certificate Available</span>
+                      <span className="text-[10px] text-gray-500">Provide verified completion certificate</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer select-none">
                       <input
@@ -687,10 +664,10 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                   </div>
 
                   {/* Featured Course toggle */}
-                  <div className="admin-toggle-row">
+                  <div className="flex items-center justify-between bg-white/5 px-5 py-3.5 rounded-xl border border-white/5 hover:bg-white/8 transition-all">
                     <div>
-                      <span className="text-sm font-bold text-[var(--admin-text-primary)] block">Featured Course</span>
-                      <span className="text-[10px] text-[var(--admin-text-muted)]">Display prominently on student dashboard homepage</span>
+                      <span className="text-sm font-bold text-white block">Featured Course</span>
+                      <span className="text-[10px] text-gray-500">Display prominently on student dashboard homepage</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer select-none">
                       <input
@@ -714,8 +691,8 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                           onClick={() => setForm(prev => ({ ...prev, visibility: state }))}
                           className={`flex-1 py-3 rounded-xl border text-xs font-bold transition-all duration-300 ${
                             form.visibility === state
-                              ? 'bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] text-[var(--accent)]'
-                              : 'bg-[var(--admin-surface)] border-[var(--admin-border)] text-[var(--admin-text-secondary)] hover:text-[var(--admin-text-primary)]'
+                              ? 'bg-purple-600/20 border-purple-500/50 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.15)]'
+                              : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/20'
                           }`}
                         >
                           {state}
@@ -730,9 +707,9 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                     <div className="flex gap-3">
                       {['Draft', 'Published', 'Archived'].map(state => {
                         const styleMap = {
-                          Draft: 'bg-amber-500/15 border-amber-500/45 text-amber-500',
-                          Published: 'bg-emerald-500/15 border-emerald-500/45 text-emerald-500',
-                          Archived: 'bg-slate-500/15 border-slate-500/45 text-slate-400'
+                          Draft: 'peer-checked:bg-yellow-500/20 peer-checked:border-yellow-500/50 peer-checked:text-yellow-300',
+                          Published: 'peer-checked:bg-emerald-500/20 peer-checked:border-emerald-500/50 peer-checked:text-emerald-300',
+                          Archived: 'peer-checked:bg-gray-500/20 peer-checked:border-gray-500/50 peer-checked:text-gray-300'
                         };
                         return (
                           <button
@@ -741,8 +718,8 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                             onClick={() => setForm(prev => ({ ...prev, status: state }))}
                             className={`flex-1 py-3 rounded-xl border text-xs font-bold transition-all duration-300 ${
                               form.status === state
-                                ? styleMap[state]
-                                : 'bg-[var(--admin-surface)] border-[var(--admin-border)] text-[var(--admin-text-secondary)] hover:text-[var(--admin-text-primary)]'
+                                ? styleMap[state] + ' shadow-[0_0_12px_rgba(168,85,247,0.1)]'
+                                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/20'
                             }`}
                           >
                             {state}
@@ -758,21 +735,21 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
             </div>
 
             {/* ── STICKY FOOTER ACTIONS ── */}
-            <div className="flex-shrink-0 px-5 py-4 sm:px-8 sm:py-5 border-t admin-drawer-footer flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 relative z-20">
+            <div className="flex-shrink-0 px-8 py-5 border-t border-white/10 bg-[#070b16]/95 backdrop-blur-md flex items-center justify-between gap-3 relative z-20">
               <button
                 type="button"
                 onClick={onClose}
-                className="admin-btn admin-btn-ghost w-full sm:w-auto"
+                className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white font-semibold transition-all duration-300 text-xs shadow-md"
               >
                 Cancel
               </button>
 
-              <div className="flex w-full flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:flex-1 sm:justify-end">
+              <div className="flex items-center gap-3 flex-1 justify-end">
                 {/* Save Draft */}
                 <button
                   type="button"
                   onClick={() => handleSave('Draft')}
-                  className="admin-btn border border-amber-500/30 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                  className="px-5 py-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/40 text-amber-300 hover:text-white font-bold transition-all duration-300 text-xs shadow-md"
                 >
                   Save Draft
                 </button>
@@ -781,7 +758,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                 <button
                   type="button"
                   onClick={() => handleSave('Published')}
-                  className="admin-btn admin-btn-primary"
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-extrabold text-xs hover:shadow-[0_0_24px_rgba(139,92,246,0.6)] transition-all hover:-translate-y-0.5 active:scale-95 border border-white/20"
                 >
                   {courseToEdit ? 'Publish Updates' : 'Publish Course'}
                 </button>

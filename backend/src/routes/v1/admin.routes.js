@@ -2,7 +2,6 @@ const express = require('express');
 const {
   getDashboardStats,
   getAdminUsers,
-  createAdminUser,
   updateUserStatus,
   deleteAdminUser,
   getAdminCourses,
@@ -20,7 +19,7 @@ router.use(authorize('admin')); // All admin routes are admin only
 router.route('/stats').get(getDashboardStats);
 
 // User management
-router.route('/users').get(getAdminUsers).post(createAdminUser);
+router.route('/users').get(getAdminUsers);
 router.route('/users/:id').put(updateUserStatus).delete(deleteAdminUser);
 
 // Course management

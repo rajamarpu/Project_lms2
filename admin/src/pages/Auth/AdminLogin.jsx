@@ -1,84 +1,173 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LuArrowRight, LuChartNoAxesCombined, LuEye, LuEyeOff, LuGraduationCap, LuLoaderCircle, LuLockKeyhole, LuMail, LuMoon, LuShieldCheck, LuSun, LuUsers } from 'react-icons/lu';
+import { MdArrowBack, MdEmail, MdVisibilityOff, MdVisibility, MdClose } from 'react-icons/md';
+import { FaJava, FaGitAlt, FaGithub, FaDocker, FaPython, FaReact, FaJs, FaNodeJs, FaHtml5, FaCss3Alt } from 'react-icons/fa';
+import { SiCplusplus, SiTypescript } from 'react-icons/si';
 import logo from '../../assets/logo.webp';
-import { useTheme } from '../../context/ThemeProvider';
+import API, { getApiErrorMessage } from '../../api/client';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-const LEARNER_URL = import.meta.env.VITE_LEARNER_URL || 'http://localhost:3000';
+const techIcons = [
+  // Left side
+  { Icon: FaJava, className: "top-[10%] left-[6%] text-orange-500/30", size: 48, delay: "0s", duration: "8s" },
+  { Icon: FaReact, className: "top-[25%] left-[18%] text-cyan-500/30", size: 36, delay: "1.5s", duration: "6.5s" },
+  { Icon: SiTypescript, className: "top-[35%] left-[26%] text-blue-500/30", size: 38, delay: "3s", duration: "8.5s" },
+  { Icon: FaGitAlt, className: "top-[48%] left-[8%] text-red-500/30", size: 40, delay: "2s", duration: "7s" },
+  { Icon: FaGithub, className: "top-[68%] left-[15%] text-slate-400/40", size: 52, delay: "4s", duration: "9s" },
+  { Icon: FaNodeJs, className: "top-[82%] left-[7%] text-green-500/30", size: 42, delay: "2.5s", duration: "9.5s" },
 
-const capabilities = [
-  [LuUsers, 'Manage people', 'Approve and support learners and instructors.'],
-  [LuGraduationCap, 'Operate learning', 'Publish courses, assessments, and credentials.'],
-  [LuChartNoAxesCombined, 'Trust the data', 'Review live persisted analytics and audit history.'],
+  // Right side
+  { Icon: FaDocker, className: "top-[8%] right-[8%] text-blue-500/30", size: 56, delay: "1s", duration: "10s" },
+  { Icon: SiCplusplus, className: "top-[24%] right-[22%] text-indigo-500/30", size: 44, delay: "3s", duration: "8s" },
+  { Icon: FaCss3Alt, className: "top-[40%] right-[10%] text-blue-400/30", size: 38, delay: "0.5s", duration: "7.5s" },
+  { Icon: FaHtml5, className: "top-[56%] right-[24%] text-orange-600/30", size: 34, delay: "2s", duration: "7s" },
+  { Icon: FaJs, className: "top-[72%] right-[8%] text-yellow-500/30", size: 38, delay: "3.5s", duration: "8.5s" },
+  { Icon: FaPython, className: "top-[86%] right-[18%] text-yellow-500/30", size: 48, delay: "5s", duration: "7.5s" }
 ];
 
-export default function AdminLogin() {
-  const navigate = useNavigate();
-  const { resolvedTheme, toggleTheme } = useTheme();
+const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
-  const login = async (event) => {
-    event.preventDefault();
+  const handleClose = () => {
+    setEmail('');
+    setPassword('');
     setError('');
-    if (!email.trim() || !password) {
-      setError('Enter the administrator email and password.');
-      return;
-    }
-    setSubmitting(true);
+    window.location.href = 'http://localhost:5173';
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.success) throw new Error(payload.error || 'Login failed.');
-      if (payload.user?.role !== 'admin') throw new Error('This account does not have administrator access.');
-      localStorage.setItem('role', 'admin');
-      localStorage.setItem('lms_token', payload.token);
-      localStorage.setItem('lms_user', JSON.stringify(payload.user));
-      navigate('/dashboard/admin', { replace: true });
-    } catch (loginError) {
-      setError(loginError.message || 'We could not sign you in. Try again.');
+      // Real backend JWT auth — this is what every /admin/* API call
+      // (Students, Courses, Teachers) actually checks via the `protect`
+      // + `authorize('admin')` middleware. Sets the token the api/client.js
+      // interceptor reads as 'lms_admin_token'.
+      const res = await API.post('/auth/login', { email, password });
+      const { token, user } = res.data;
+
+      if (user.role !== 'admin') {
+        setError('This account does not have admin access.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      localStorage.setItem('lms_admin_token', token);
+      localStorage.setItem('lms_admin_user', JSON.stringify(user));
+      localStorage.setItem('role', 'admin'); // kept for compatibility with existing route guards
+      navigate('/dashboard/admin');
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Login failed. Please check your credentials.'));
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <main className="relative isolate min-h-screen overflow-hidden bg-[var(--admin-shell-bg)] text-[var(--admin-text-primary)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(59,130,246,0.16),transparent_38%),radial-gradient(circle_at_90%_90%,rgba(139,92,246,0.14),transparent_40%)]" aria-hidden />
-      <div className="absolute right-5 top-5 z-20 flex gap-2">
-        <button type="button" onClick={toggleTheme} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] text-[var(--admin-text-primary)] shadow-sm" aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}>{resolvedTheme === 'dark' ? <LuSun size={17} /> : <LuMoon size={17} />}</button>
-        <a href={LEARNER_URL} className="inline-flex h-10 items-center rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] px-3 text-xs font-semibold text-[var(--admin-text-secondary)] hover:text-[var(--admin-text-primary)]">Learner portal</a>
+    <div className="no-theme min-h-screen flex items-center justify-center bg-[#0d1117] relative overflow-hidden font-sans">
+      {/* Neon background glows */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-30%] left-[-30%] w-[60%] h-[60%] bg-accent-cyan rounded-full blur-[120px] opacity-30" />
+        <div className="absolute bottom-[-30%] right-[-30%] w-[60%] h-[60%] bg-accent-purple rounded-full blur-[120px] opacity-30" />
+
+        {/* Floating tech icons */}
+        {techIcons.map((item, idx) => (
+          <item.Icon
+            key={idx}
+            size={item.size}
+            className={`absolute animate-float transition-all duration-500 ${item.className}`}
+            style={{
+              animationDelay: item.delay,
+              animationDuration: item.duration,
+            }}
+          />
+        ))}
       </div>
 
-      <div className="relative mx-auto grid min-h-screen w-full max-w-7xl items-center gap-12 px-5 py-20 lg:grid-cols-[1fr_480px] lg:px-10">
-        <section className="hidden lg:block">
-          <div className="inline-flex items-center gap-3 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] px-4 py-3 shadow-[var(--admin-shadow-card)]"><img src={logo} alt="UptoSkills" className="h-9 w-auto" /><span className="text-sm font-semibold">Administration workspace</span></div>
-          <p className="mt-12 text-sm font-semibold uppercase tracking-[0.18em] text-blue-500">Secure platform operations</p>
-          <h1 className="mt-4 max-w-2xl text-5xl font-semibold leading-[1.08] tracking-tight">Run the LMS with clarity, control, and accountable data.</h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-[var(--admin-text-secondary)]">Manage learning operations from one protected workspace backed by live database records and persisted audit events.</p>
-          <div className="mt-10 grid max-w-3xl gap-4 xl:grid-cols-3">{capabilities.map(([Icon, title, description]) => <article key={title} className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 shadow-[var(--admin-shadow-card)]"><div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/12 text-blue-500"><Icon size={19} /></div><h2 className="font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-[var(--admin-text-secondary)]">{description}</p></article>)}</div>
-        </section>
+      {/* Back button */}
+      <button
+        onClick={handleClose}
+        className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors group text-sm"
+      >
+        <MdArrowBack className="group-hover:-translate-x-1 transition-transform" /> Back to Home
+      </button>
 
-        <section className="w-full rounded-[1.75rem] border border-[var(--admin-border)] bg-[var(--admin-page-panel)] p-6 shadow-[var(--admin-shadow-lg)] sm:p-9">
-          <div className="mb-8"><div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-500"><LuShieldCheck size={15} />Administrator authentication</div><h2 className="text-3xl font-semibold tracking-tight">Welcome back</h2><p className="mt-2 text-sm leading-6 text-[var(--admin-text-secondary)]">Use your approved administrator account to continue.</p></div>
-          {error && <div role="alert" aria-live="polite" className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm font-medium text-red-500">{error}</div>}
-          <form onSubmit={login} className="space-y-5" noValidate>
-            <label htmlFor="admin-email" className="block text-sm font-semibold">Email address<div className="relative mt-2"><LuMail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--admin-text-muted)]" size={17} /><input id="admin-email" type="email" required autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); setError(''); }} placeholder="admin@example.com" className="h-12 w-full rounded-xl border border-[var(--admin-input-border)] bg-[var(--admin-input-bg)] pl-10 pr-4 text-sm text-[var(--admin-text-primary)] outline-none placeholder:text-[var(--admin-text-muted)] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" /></div></label>
-            <label htmlFor="admin-password" className="block text-sm font-semibold"><span className="flex items-center justify-between">Password<a href={`${LEARNER_URL}/forgot-password`} className="text-xs font-semibold text-blue-500 hover:underline">Forgot password?</a></span><div className="relative mt-2"><LuLockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--admin-text-muted)]" size={17} /><input id="admin-password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={(event) => { setPassword(event.target.value); setError(''); }} placeholder="Enter your password" className="h-12 w-full rounded-xl border border-[var(--admin-input-border)] bg-[var(--admin-input-bg)] pl-10 pr-12 text-sm text-[var(--admin-text-primary)] outline-none placeholder:text-[var(--admin-text-muted)] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" /><button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-[var(--admin-text-muted)] hover:bg-[var(--admin-surface-hover)] hover:text-[var(--admin-text-primary)]" aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <LuEyeOff size={17} /> : <LuEye size={17} />}</button></div></label>
-            <button type="submit" disabled={submitting} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">{submitting ? <><LuLoaderCircle className="animate-spin" size={17} />Signing in…</> : <>Sign in to admin<LuArrowRight size={17} /></>}</button>
-          </form>
-          <div className="mt-7 border-t border-[var(--admin-border)] pt-5"><p className="text-center text-xs leading-5 text-[var(--admin-text-muted)]">Access is restricted to approved administrators. Authentication and administrative actions are recorded for security.</p></div>
-        </section>
+      <div className="max-w-md w-full mx-4 glass-card glass-card-hover p-8 rounded-2xl relative z-10">
+        <button type="button" className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" onClick={handleClose}>
+          <MdClose size={20} />
+        </button>
+        <div className="text-center mb-6">
+          <img src={logo} alt="UptoSkills Logo" className="mx-auto h-12 mb-4" />
+          <h2 className="text-3xl font-bold text-[#f8fafc] mb-2 tracking-tight">Admin Sign In</h2>
+          <p className="text-[#cbd5e1] text-sm mb-4">Enter your credentials to access the dashboard</p>
+        </div>
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/50 p-3 rounded-lg text-sm text-red-200 mb-4">
+            {error}
+          </div>
+        )}
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="relative">
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              className="w-full bg-[#1a1f2e] border border-white/20 rounded-md px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-cyan transition-colors"
+              placeholder="Admin Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <MdEmail className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          </div>
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              required
+              autoComplete="current-password"
+              className="w-full bg-[#1a1f2e] border border-white/20 rounded-md px-4 py-2.5 pr-10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-cyan transition-colors"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+            >
+              {showPassword ? <MdVisibility size={18} /> : <MdVisibilityOff size={18} />}
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between text-sm mb-4">
+            <label className="flex items-center gap-2 text-gray-400">
+              <input type="checkbox" className="rounded bg-background-secondary border-white/10 text-accent-cyan focus:ring-accent-cyan" />
+              Remember me
+            </label>
+            <a href="#" className="text-accent-cyan hover:underline">
+              Forgot password?
+            </a>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-gradient-to-r from-accent-cyan to-accent-purple text-white font-bold py-3 rounded-md hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Signing in…' : 'Sign In'}
+          </button>
+        </form>
+
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Secured by JWT — only accounts with the admin role can access this dashboard
+        </p>
       </div>
-    </main>
+    </div>
   );
-}
+};
+
+export default AdminLogin;

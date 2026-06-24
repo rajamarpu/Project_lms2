@@ -20,14 +20,51 @@ setupSwagger(app);
 app.use(compression());
 
 // HTTP Request Logging
-app.use(pinoHttp({
-  logger,
-  genReqId: (req, res) => {
-    const id = req.headers['x-request-id'] || require('crypto').randomUUID();
-    res.setHeader('X-Request-Id', id);
-    return id;
+app.use(pinoHttp({ logger }));
+
+// ─────────────────────────────────────────────────────────────────
+// CORS must be registered before helmet/rate-limiting so that the
+// browser's OPTIONS preflight is answered immediately with the right
+// headers and never gets caught by another middleware's default
+// security headers or hit-counting. In dev this is fully permissive
+// so any local frontend port (Vite, CRA, etc.) can talk to the API.
+// ─────────────────────────────────────────────────────────────────
+const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:8080',
+  'http://localhost:8081',
+  'http://localhost:8082',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!isProduction) {
+      // Permissive in dev: allow any localhost origin, any port.
+      return callback(null, true);
+    }
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
   },
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+// Explicitly short-circuit every OPTIONS preflight with 204 before it
+// can reach helmet or the rate limiter — some combinations of helmet
+// defaults + rate-limit-redis edge cases were returning 403 on the
+// preflight itself, which silently breaks every cross-origin POST.
+// Note: Express 5 dropped support for the bare '*' wildcard string
+// (path-to-regexp v8+), so a regex is used here instead.
+app.options(/.*/, cors(corsOptions));
 
 // Set security HTTP headers
 app.use(helmet());
@@ -36,11 +73,12 @@ app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" })); // Import
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
+  max: 300, // Limit each IP to 300 requests per window (raised for active dev/demo use)
   message: { success: false, error: 'Too many requests from this IP, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
   passOnStoreError: true,
+  skip: (req) => req.method === 'OPTIONS', // never rate-limit preflight requests
   // store: new RedisStore({
   //   sendCommand: (...args) => redisClient.call(...args),
   // }),
@@ -48,31 +86,6 @@ const limiter = rateLimit({
 // Apply rate limiter to all API routes
 app.use('/api', limiter);
 
-// Middleware
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:8080',
-  'http://localhost:8081',
-  'http://localhost:8082',
-  'http://localhost:5173',
-  'http://localhost:5174',
-  process.env.CLIENT_URL,
-].filter(Boolean);
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else if (process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('Origin is not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const path = require('path');
@@ -86,8 +99,6 @@ const userRoutesV1 = require('./routes/v1/users.routes');
 const adminRoutesV1 = require('./routes/v1/admin.routes');
 const profileRoutesV1 = require('./routes/v1/profile.routes');
 const uploadRoutesV1 = require('./routes/v1/upload.routes');
-const platformRoutesV1 = require('./routes/v1/platform.routes');
-const parityRoutesV1 = require('./routes/v1/parity.routes');
 
 // Mount v1 Routes
 app.use('/api/v1/auth', authRoutesV1);
@@ -97,8 +108,6 @@ app.use('/api/v1/users', userRoutesV1);
 app.use('/api/v1/admin', adminRoutesV1);
 app.use('/api/v1/profile', profileRoutesV1);
 app.use('/api/v1/upload', uploadRoutesV1);
-app.use('/api/v1/platform', platformRoutesV1);
-app.use('/api/v1/features', parityRoutesV1);
 
 // Maintain backward compatibility by aliasing /api to v1 routes
 app.use('/api/auth', authRoutesV1);
@@ -108,8 +117,6 @@ app.use('/api/users', userRoutesV1);
 app.use('/api/admin', adminRoutesV1);
 app.use('/api/profile', profileRoutesV1);
 app.use('/api/upload', uploadRoutesV1);
-app.use('/api/platform', platformRoutesV1);
-app.use('/api/features', parityRoutesV1);
 
 // Default Route
 app.get('/', (req, res) => {

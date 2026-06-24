@@ -17,7 +17,6 @@ export interface CourseData {
     enrollments: number;
   };
   generateAI?: boolean;
-  status?: "draft" | "approved";
 }
 
 
@@ -37,7 +36,6 @@ export const courseApi = {
   getEnrollmentByCourse: (courseId: string) => API.get(`/enrollments/${courseId}`),
   updateEnrollmentMentor: (courseId: string, mentor: string) => API.put(`/enrollments/${courseId}/mentor`, { mentor }),
   completeLesson: (courseId: string, lessonId: string) => API.put(`/enrollments/${courseId}/lessons/${lessonId}`),
-  updateResumePosition: (courseId: string, lessonId: string, positionSeconds = 0) => API.put(`/enrollments/${courseId}/resume`, { lessonId, positionSeconds }),
 
   // Lessons
   addLesson: (courseId: string, data: { title: string; content: string; videoUrl?: string; order: number }) => API.post(`/courses/${courseId}/lessons`, data),

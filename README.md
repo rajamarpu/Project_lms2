@@ -15,33 +15,12 @@ A complete Full-Stack Learning Management System featuring:
 Before running the application, ensure your `.env` files are correctly configured.
 
 #### `backend/.env`
-Create a `.env` in the `backend/` directory. For Supabase, use the shared pooler connection string from **Project Settings -> Database** and keep `?sslmode=require&uselibpqcompat=true` on the URL:
+Create a `.env` in the `backend/` directory:
 ```env
-PORT=5001
-DATABASE_URL="postgresql://postgres.okzgkdlftosnlkzozhls:[YOUR-PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require&uselibpqcompat=true"
+PORT=5000
+DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres"
 JWT_SECRET=your_super_secret_jwt_key_here
 JWT_EXPIRES_IN=7d
-CLIENT_URL=http://localhost:8081
-```
-
-Optional admin seed credentials:
-```env
-ADMIN_EMAIL=admin@gmail.com
-ADMIN_PASSWORD=admin123
-ADMIN_NAME=Admin
-```
-
-After setting `DATABASE_URL`, apply migrations and create the admin account:
-```bash
-cd backend
-npx prisma migrate deploy
-node createAdmin.js
-```
-
-For deployed frontends, set `VITE_API_URL` to your backend API URL, for example:
-```env
-VITE_API_URL=https://your-backend.example.com/api
-VITE_BACKEND_URL=https://your-backend.example.com
 ```
 
 ### Installation
@@ -51,34 +30,11 @@ npm run install:all
 ```
 
 ### Running Locally
-From the root directory, start the backend API in one terminal:
-```bash
-npm run backend
-```
-
-Then start the learner frontend in another terminal:
+To launch the entire stack concurrently (Frontend, Backend, and Admin), run this command from the root directory:
 ```bash
 npm run dev
 ```
 
-- **Frontend**: http://localhost:3000
-- **Backend APIs**: http://localhost:5001/api-docs
-- **Admin Portal**: run `npm run admin`, then open http://localhost:3001
-
-To launch the entire stack concurrently (Frontend, Backend, and Admin), run:
-```bash
-npm run dev:all
-```
-
-## MYPROJECT feature parity
-
-The persisted feature set imported from `MYPROJECT/DEMO PROJECT` includes:
-
-- Community topics, posts, reporting, and admin moderation
-- Scheduled live learning sessions
-- Configurable AI tutor personalities and persisted chat rooms
-- Standalone question practice with answer validation
-- Assessment retake grants
-- Admin Feature Hub for tutor, live-session, practice-question, and moderation operations
-
-These features use migration `20260621170000_myproject_feature_parity`. AI tutor responses require `GEMINI_API_KEY`; without it, messages remain persisted but the API returns an explicit provider-configuration error. OAuth, transactional email, and payment capture still require real provider credentials and callback/webhook configuration and are not simulated.
+- **Frontend**: http://localhost:8081
+- **Backend APIs**: http://localhost:5000/api-docs
+- **Admin Portal**: http://localhost:5173

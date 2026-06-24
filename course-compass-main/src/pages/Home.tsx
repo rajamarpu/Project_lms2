@@ -1,13 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Sparkles, ArrowRight, Play, TrendingUp, Award, Users } from "lucide-react";
 import { useState, useEffect } from "react";
-import { CourseCard, type CourseView } from "@/components/common/CourseCard";
+import { CourseCard } from "@/components/common/CourseCard";
 import { courseApi } from "@/api/course.api";
 import { Loader2 } from "lucide-react";
 
 const Home = () => {
   const [query, setQuery] = useState("");
-  const [featured, setFeatured] = useState<CourseView[]>([]);
+  const [featured, setFeatured] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -128,7 +128,6 @@ const Home = () => {
           </div>
         )}
       </section>
-
     </div>
   );
 };

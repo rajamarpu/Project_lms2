@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { platformAdminApi } from '../api/platform';
+import { loadSearchSources, searchGlobal } from '../utils/globalSearch';
 
 const DEBOUNCE_MS = 300;
 
@@ -7,24 +7,33 @@ export function useGlobalSearch() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const sourcesRef = useRef(null);
   const timerRef = useRef(null);
 
-  const refreshSources = useCallback(() => {}, []);
+  const refreshSources = useCallback(() => {
+    sourcesRef.current = loadSearchSources();
+  }, []);
+
+  useEffect(() => {
+    refreshSources();
+  }, [refreshSources]);
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
 
     const trimmed = query.trim();
     if (!trimmed) {
+      setResults([]);
+      setLoading(false);
       return undefined;
     }
 
+    setLoading(true);
     timerRef.current = setTimeout(() => {
-      setLoading(true);
-      platformAdminApi.search(trimmed)
-        .then((payload) => setResults(payload.data))
-        .catch(() => setResults([]))
-        .finally(() => setLoading(false));
+      if (!sourcesRef.current) refreshSources();
+      const found = searchGlobal(trimmed, sourcesRef.current);
+      setResults(found);
+      setLoading(false);
     }, DEBOUNCE_MS);
 
     return () => {
@@ -35,8 +44,8 @@ export function useGlobalSearch() {
   return {
     query,
     setQuery,
-    results: query.trim() ? results : [],
-    loading: Boolean(query.trim()) && loading,
+    results,
+    loading,
     refreshSources,
   };
 }

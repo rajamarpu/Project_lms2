@@ -1,5 +1,10 @@
 const { prisma } = require('../src/config/db');
 const { generateLessonsForCourse } = require('../src/utils/aiGenerator');
+const slugify = (value) => String(value || '')
+  .toLowerCase()
+  .trim()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '');
 
 async function seed() {
   const admin = await prisma.user.findFirst({ where: { role: 'admin' } });
@@ -18,8 +23,24 @@ async function seed() {
 
   for (const c of courses) {
     console.log("Generating course:", c.title);
-    const course = await prisma.course.create({
-      data: {
+    const slug = slugify(c.title);
+    const course = await prisma.course.upsert({
+      where: { slug },
+      update: {
+        title: c.title,
+        description: c.desc,
+        category: c.category,
+        level: c.level,
+        thumbnail: "https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&q=80",
+        celebrityTeacher: "Salman Khan",
+        price: 499,
+        duration: "Self-paced",
+        rating: 4.8,
+        status: "approved",
+        instructorId: admin.id
+      },
+      create: {
+        slug,
         title: c.title,
         description: c.desc,
         category: c.category,

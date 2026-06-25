@@ -21,6 +21,81 @@ enum EnrollmentStatus {
   dropped
 }
 
+enum UserStatus {
+  pending
+  approved
+  rejected
+  suspended
+}
+
+enum CourseStatus {
+<<<<<<< HEAD
+  pending
+  approved
+  rejected
+}
+
+=======
+  draft
+  pending
+  scheduled
+  approved
+  archived
+  rejected
+}
+
+enum ReviewStatus {
+  published
+  hidden
+}
+
+enum CertificateStatus {
+  pending
+  issued
+  revoked
+}
+
+enum BillingStatus {
+  pending
+  paid
+  failed
+  refunded
+  canceled
+}
+
+enum LiveSessionStatus {
+  scheduled
+  live
+  completed
+  canceled
+}
+
+enum CommunityReportStatus {
+  open
+  actioned
+  dismissed
+}
+
+enum SupportTicketPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum PracticeQuestionDifficulty {
+  easy
+  medium
+  hard
+}
+
+enum PracticeQuestionType {
+  multiple_choice
+  true_false
+  short_answer
+}
+
+>>>>>>> 3b70a8a (Improved Database setup)
 enum NotificationType {
   system
   course
@@ -46,13 +121,47 @@ enum SubmissionStatus {
   returned
 }
 
+enum ReviewStatus {
+  published
+  hidden
+}
+
+enum CertificateStatus {
+  pending
+  issued
+  revoked
+}
+
+enum BillingStatus {
+  pending
+  paid
+  failed
+}
+
+enum LiveSessionStatus {
+  scheduled
+  live
+  completed
+  cancelled
+}
+
+enum ReportStatus {
+  open
+  actioned
+  dismissed
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
   password  String
+<<<<<<< HEAD
+  role      Role       @default(user)
+=======
   role      Role     @default(user)
-  status    String   @default("pending") // pending, approved, rejected, suspended
+>>>>>>> 3b70a8a (Improved Database setup)
+  status    UserStatus @default(pending)
   bio       String?
   avatar    String?
   createdAt DateTime @default(now())
@@ -85,26 +194,27 @@ model User {
 
 model Course {
   id               String    @id @default(cuid())
+  slug             String?   @unique
   title            String
   description      String
   category         String
   level            String    @default("Beginner")
-  price            Float     @default(0)
+  price            Int       @default(0)
   thumbnail        String?
   celebrityTeacher String?
-  instructorId     String
+  instructorId     String?
   duration         String?
   rating           Float     @default(4.5)
   outcomes         String[]
   xp               String?
   gradient         String?
   icon             String?
-  status           String    @default("pending") // draft, pending, scheduled, approved, archived, rejected
+  status           CourseStatus @default(pending)
   scheduledAt      DateTime?
   publishedAt      DateTime?
   archivedAt       DateTime?
   rejectionReason  String?
-  instructor       User      @relation("InstructorCourses", fields: [instructorId], references: [id], onDelete: Cascade)
+  instructor       User?     @relation("InstructorCourses", fields: [instructorId], references: [id], onDelete: SetNull)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -190,6 +300,7 @@ model Session {
   revokedAt  DateTime?
   lastUsedAt DateTime  @default(now())
   createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt])
@@ -225,6 +336,7 @@ model Notification {
   actionUrl String?
   readAt    DateTime?
   createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, readAt, createdAt])
@@ -245,15 +357,17 @@ model Announcement {
 }
 
 model UserPreference {
-  id                  String  @id @default(cuid())
-  userId              String  @unique
-  language            String  @default("English")
-  timezone            String  @default("UTC")
-  emailNotifications  Boolean @default(false)
-  courseNotifications Boolean @default(true)
-  deadlineReminders   Boolean @default(true)
-  reducedMotion       Boolean @default(false)
-  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  language            String   @default("English")
+  timezone            String   @default("UTC")
+  emailNotifications  Boolean  @default(false)
+  courseNotifications Boolean  @default(true)
+  deadlineReminders   Boolean  @default(true)
+  reducedMotion       Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Bookmark {
@@ -261,6 +375,7 @@ model Bookmark {
   userId    String
   courseId  String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
@@ -268,16 +383,23 @@ model Bookmark {
 }
 
 model CourseReview {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   userId    String
   courseId  String
   rating    Int
   comment   String?
-  status    String   @default("published")
+  status    ReviewStatus @default(published)
+<<<<<<< HEAD
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+=======
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+>>>>>>> 3b70a8a (Improved Database setup)
 
   @@unique([userId, courseId])
   @@index([courseId, status])
@@ -313,6 +435,8 @@ model Question {
   answer       Json?
   points       Int        @default(1)
   order        Int
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
   @@unique([assessmentId, order])
@@ -327,6 +451,7 @@ model AssessmentAttempt {
   passed       Boolean?
   startedAt    DateTime   @default(now())
   submittedAt  DateTime?
+  updatedAt    DateTime   @updatedAt
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -372,18 +497,18 @@ model AssignmentSubmission {
 }
 
 model Certificate {
-  id             String    @id @default(cuid())
-  verificationId String    @unique @default(cuid())
+  id             String            @id @default(cuid())
+  verificationId String            @unique @default(cuid())
   userId         String
   courseId       String
-  status         String    @default("pending")
+  status         CertificateStatus @default(pending)
   issuedAt       DateTime?
   expiresAt      DateTime?
   revokedAt      DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course         Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course         Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
   @@index([status, createdAt])
@@ -391,15 +516,15 @@ model Certificate {
 
 model SupportTicket {
   id          String          @id @default(cuid())
-  requesterId String
+  requesterId String?
   assigneeId  String?
   subject     String
   description String
-  priority    String          @default("medium")
+  priority    SupportTicketPriority @default(medium)
   status      TicketStatus    @default(open)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
-  requester   User            @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  requester   User?           @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: SetNull)
   assignee    User?           @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   messages    TicketMessage[]
 
@@ -410,24 +535,33 @@ model SupportTicket {
 model TicketMessage {
   id        String        @id @default(cuid())
   ticketId  String
-  authorId  String
+  authorId  String?
   body      String
   createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([ticketId, createdAt])
 }
 
 model BillingRecord {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   userId      String?
   courseId    String?
   amount      Float
+<<<<<<< HEAD
+  currency    String        @default("INR")
+  status      BillingStatus
+  providerRef String?       @unique
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+=======
   currency    String   @default("INR")
-  status      String
+  status      BillingStatus @default(pending)
   providerRef String?  @unique
   createdAt   DateTime @default(now())
+>>>>>>> 3b70a8a (Improved Database setup)
 
   @@index([status, createdAt])
 }
@@ -440,6 +574,7 @@ model LearningEvent {
   type      String
   metadata  Json?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   course    Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -448,15 +583,44 @@ model LearningEvent {
   @@index([courseId, type, createdAt])
 }
 
+<<<<<<< HEAD
+=======
+model LiveSession {
+  id              String            @id @default(cuid())
+  title           String
+  description     String?
+  courseId        String?
+  instructorId    String
+  startsAt        DateTime
+  durationMinutes Int               @default(60)
+  meetingUrl      String?
+  status          LiveSessionStatus @default(scheduled)
+<<<<<<< HEAD
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  course          Course?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  instructor      User              @relation("LiveSessionInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+=======
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  course          Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  instructor      User     @relation("LiveSessionInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+>>>>>>> 3b70a8a (Improved Database setup)
+
+  @@index([startsAt, status])
+  @@index([courseId, startsAt])
+}
+
+>>>>>>> 3df9ee7ef3041953fb3588a35b16a33fe93f6c45
 model CommunityTopic {
   id          String          @id @default(cuid())
   title       String
   description String?
-  createdById String
+  createdById String?
   locked      Boolean         @default(false)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
-  createdBy   User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdBy   User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
   posts       CommunityPost[]
 
   @@index([createdAt])
@@ -465,13 +629,13 @@ model CommunityTopic {
 model CommunityPost {
   id        String            @id @default(cuid())
   topicId   String
-  authorId  String
+  authorId  String?
   body      String
   hidden    Boolean           @default(false)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   topic     CommunityTopic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  author    User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User?             @relation(fields: [authorId], references: [id], onDelete: SetNull)
   reports   CommunityReport[]
 
   @@index([topicId, createdAt])
@@ -482,8 +646,13 @@ model CommunityReport {
   postId     String
   reporterId String
   reason     String
-  status     String        @default("open")
+<<<<<<< HEAD
+  status     ReportStatus  @default(open)
+=======
+  status     CommunityReportStatus @default(open)
+>>>>>>> 3b70a8a (Improved Database setup)
   createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
   reviewedAt DateTime?
   post       CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   reporter   User          @relation("CommunityReporter", fields: [reporterId], references: [id], onDelete: Cascade)
@@ -516,6 +685,7 @@ model ChatMessage {
   content       String
   moderated     Boolean        @default(false)
   createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   course        Course?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   personality   AIPersonality? @relation(fields: [personalityId], references: [id], onDelete: SetNull)
@@ -526,6 +696,7 @@ model ChatMessage {
 
 model FlashcardDeck {
   id          String   @id @default(cuid())
+<<<<<<< HEAD
   title       String
   description String?
   subject     String
@@ -540,6 +711,20 @@ model FlashcardDeck {
   author      User     @relation("FlashcardDeckAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   cards       Flashcard[]
   progress    FlashcardProgress[]
+=======
+  authorId    String?
+  category    String
+  difficulty  PracticeQuestionDifficulty @default(medium)
+  type        PracticeQuestionType @default(multiple_choice)
+  prompt      String
+  options     Json?
+  answer      Json?
+  explanation String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  author      User?    @relation("PracticeQuestionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+>>>>>>> 3df9ee7ef3041953fb3588a35b16a33fe93f6c45
 
   @@index([publishedAt, category, difficulty])
   @@index([courseId])
@@ -582,6 +767,7 @@ model AssessmentRetakeGrant {
   reason        String?
   expiresAt     DateTime?
   createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   assessment    Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   user          User       @relation("RetakeLearner", fields: [userId], references: [id], onDelete: Cascade)
   grantedBy     User       @relation("RetakeGrantor", fields: [grantedById], references: [id], onDelete: Cascade)

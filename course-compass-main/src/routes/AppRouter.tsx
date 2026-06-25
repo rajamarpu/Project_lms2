@@ -48,6 +48,12 @@ export const AppRouter = () => {
             <Route path="/courses/:id" element={<CourseDetails />} />
             <Route path="/features" element={<Features />} />
             <Route path="/support" element={<Support />} />
+<<<<<<< HEAD
+=======
+            <Route path="/learning-paths" element={<LearningPaths />} />
+            <Route path="/learning-paths/:id" element={<LearningPathDetails />} />
+            <Route path="/paths/:id" element={<LearningPathDetails />} />
+>>>>>>> 3df9ee7ef3041953fb3588a35b16a33fe93f6c45
             <Route path="/verify/:verificationId" element={<VerifyCertificate />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/learn/:id" element={<CoursePlayer />} />

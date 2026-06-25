@@ -2,6 +2,11 @@ const bcrypt = require('bcryptjs');
 const { prisma } = require('../src/config/db');
 
 const img = (seed) => `https://images.unsplash.com/${seed}?auto=format&fit=crop&w=800&q=80`;
+const slugify = (value) => String(value || '')
+  .toLowerCase()
+  .trim()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '');
 
 const seedCourses = [
   {
@@ -212,18 +217,21 @@ async function main() {
   for (const c of seedCourses) {
     if (!instructors[c.instructorName]) {
       const email = `${c.instructorName.toLowerCase().replace(' ', '.')}@instructor.com`;
-      let user = await prisma.user.findUnique({ where: { email } });
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            name: c.instructorName,
-            email,
-            password: hashedPassword,
-            role: 'instructor',
-            status: 'approved'
-          }
-        });
-      }
+      const user = await prisma.user.upsert({
+        where: { email },
+        update: {
+          name: c.instructorName,
+          role: 'instructor',
+          status: 'approved'
+        },
+        create: {
+          name: c.instructorName,
+          email,
+          password: hashedPassword,
+          role: 'instructor',
+          status: 'approved'
+        }
+      });
       instructors[c.instructorName] = user;
     }
   }
@@ -231,48 +239,102 @@ async function main() {
   // 2. Create Courses
   const dbCourses = {};
   for (const c of seedCourses) {
+<<<<<<< HEAD
     let course = await prisma.course.findFirst({ where: { title: c.title } });
+    const courseData = {
+=======
+    const slug = c.slug || slugify(c.title);
+    const existing = await prisma.course.findFirst({
+      where: {
+        OR: [
+          { slug },
+          { title: c.title }
+        ]
+      }
+    });
+
+    const courseData = {
+      slug,
+>>>>>>> 3b70a8a (Improved Database setup)
+      title: c.title,
+      description: c.description,
+      category: c.category,
+      level: c.level,
+<<<<<<< HEAD
+      price: c.price * 100, // Store in integer cents
+=======
+      price: c.price,
+>>>>>>> 3b70a8a (Improved Database setup)
+      thumbnail: c.thumbnail,
+      duration: c.duration,
+      rating: c.rating,
+      outcomes: c.outcomes,
+      xp: c.xp,
+      gradient: c.gradient,
+      icon: c.icon,
+      status: c.status,
+      instructorId: instructors[c.instructorName].id,
+      celebrityTeacher: c.instructorName
+    };
+
+<<<<<<< HEAD
+    if (course) {
+      course = await prisma.course.update({
+        where: { id: course.id },
+        data: courseData
+      });
+    } else {
+      course = await prisma.course.create({
+        data: courseData
+=======
+    let course = existing;
     if (!course) {
       course = await prisma.course.create({
-        data: {
-          title: c.title,
-          description: c.description,
-          category: c.category,
-          level: c.level,
-          price: c.price,
-          thumbnail: c.thumbnail,
-          duration: c.duration,
-          rating: c.rating,
-          outcomes: c.outcomes,
-          xp: c.xp,
-          gradient: c.gradient,
-          icon: c.icon,
-          status: c.status,
-          instructorId: instructors[c.instructorName].id,
-          celebrityTeacher: c.instructorName
-        }
+        data: courseData
+      });
+    } else {
+      course = await prisma.course.update({
+        where: { id: course.id },
+        data: courseData
+>>>>>>> 3b70a8a (Improved Database setup)
       });
     }
-    dbCourses[c.slug] = course;
+    dbCourses[slug] = course;
   }
 
   // 3. Create Learning Paths
   for (const lp of seedLearningPaths) {
-    let path = await prisma.learningPath.findUnique({ where: { slug: lp.slug } });
-    if (!path) {
-      path = await prisma.learningPath.create({
-        data: {
-          slug: lp.slug,
-          title: lp.title,
-          description: lp.description,
-          duration: lp.duration,
-          color: lp.color,
-          courses: {
-            connect: lp.courseSlugs.map(s => ({ id: dbCourses[s].id }))
-          }
+    await prisma.learningPath.upsert({
+      where: { slug: lp.slug },
+      update: {
+        title: lp.title,
+        description: lp.description,
+        duration: lp.duration,
+        color: lp.color,
+        courses: {
+<<<<<<< HEAD
+          set: lp.courseSlugs.map(s => ({ id: dbCourses[s].id }))
+=======
+          set: [],
+          connect: lp.courseSlugs.map((s) => ({ id: dbCourses[s].id }))
+>>>>>>> 3b70a8a (Improved Database setup)
         }
-      });
-    }
+      },
+      create: {
+        slug: lp.slug,
+        title: lp.title,
+        description: lp.description,
+        duration: lp.duration,
+        color: lp.color,
+        courses: {
+<<<<<<< HEAD
+          connect: lp.courseSlugs.map(s => ({ id: dbCourses[s].id }))
+=======
+          connect: lp.courseSlugs.map((s) => ({ id: dbCourses[s].id }))
+>>>>>>> 3b70a8a (Improved Database setup)
+        }
+      }
+    });
   }
 
   console.log('Database seeded successfully.');

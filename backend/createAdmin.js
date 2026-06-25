@@ -3,13 +3,13 @@ const { prisma } = require('./src/config/db');
 
 async function createAdmin() {
   try {
-    const email = process.env.ADMIN_EMAIL || 'admin@gmail.com';
-    const password = process.env.ADMIN_PASSWORD || 'admin123';
+    const email = 'shubham3@gmail.com';
+    const password = 'shubham123';
     
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
-    await prisma.user.upsert({
+    admin = await prisma.user.upsert({
       where: { email },
       update: {
         password: hashedPassword,
@@ -17,7 +17,7 @@ async function createAdmin() {
         status: 'approved'
       },
       create: {
-        name: process.env.ADMIN_NAME || 'Admin',
+        name: 'Shubham Admin',
         email: email,
         password: hashedPassword,
         role: 'admin',
@@ -25,7 +25,6 @@ async function createAdmin() {
       }
     });
     console.log('Admin account created/updated successfully!');
-    
     console.log(`Email: ${email}`);
     console.log(`Password: ${password}`);
   } catch (error) {

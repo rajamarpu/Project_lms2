@@ -158,9 +158,17 @@ const LearningPaths = () => {
                   ))}
                 </div>
 
+<<<<<<< HEAD
                 <Link to={`/learning-paths/${path.id}`} className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:bg-primary/90">
                   View full roadmap
                   <ArrowRight className="h-4 w-4" />
+=======
+                <Link 
+                  to={`/learning-paths/${path.slug}`}
+                  className="inline-flex justify-center items-center gap-2 py-3.5 mt-auto btn-primary w-full"
+                >
+                  View Full Roadmap <ArrowRight className="w-4 h-4" />
+>>>>>>> 3df9ee7ef3041953fb3588a35b16a33fe93f6c45
                 </Link>
               </article>
             );

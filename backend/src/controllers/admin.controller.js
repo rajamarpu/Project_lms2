@@ -3,6 +3,7 @@ const { safePage } = require('../utils/platformRules');
 const bcrypt = require('bcryptjs');
 const { audit } = require('../services/audit.service');
 const { clearCache } = require('../middlewares/cache.middleware');
+const { formatPrice } = require('../utils/priceHelper');
 
 // @desc    Get dashboard statistics for admin
 // @route   GET /api/admin/stats
@@ -198,7 +199,7 @@ exports.getAdminCourses = async (req, res, next) => {
     res.status(200).json({
       success: true,
       count: courses.length,
-      data: courses,
+      data: formatPrice(courses),
       meta: {
         total,
         page: pageNumber,
@@ -216,18 +217,17 @@ exports.getAdminCourses = async (req, res, next) => {
 // @access  Private/Admin
 exports.updateCourseStatus = async (req, res, next) => {
   try {
-    const { status, scheduledAt, rejectionReason } = req.body;
-    const allowed = ['draft', 'pending', 'scheduled', 'approved', 'archived', 'rejected'];
+    const { status, rejectionReason } = req.body;
+    const allowed = ['pending', 'approved', 'rejected'];
     if (!allowed.includes(status)) return res.status(400).json({ success: false, error: 'Invalid course status' });
-    if (status === 'scheduled' && (!scheduledAt || new Date(scheduledAt) <= new Date())) return res.status(400).json({ success: false, error: 'A future schedule date is required' });
     if (status === 'rejected' && !rejectionReason?.trim()) return res.status(400).json({ success: false, error: 'A rejection reason is required' });
     const previous = await prisma.course.findUnique({ where: { id: req.params.id } });
     if (!previous) return res.status(404).json({ success: false, error: 'Course not found' });
     const lifecycle = {
       status,
-      scheduledAt: status === 'scheduled' ? new Date(scheduledAt) : null,
+      scheduledAt: null,
       publishedAt: status === 'approved' ? new Date() : previous.publishedAt,
-      archivedAt: status === 'archived' ? new Date() : null,
+      archivedAt: null,
       rejectionReason: status === 'rejected' ? rejectionReason.trim() : null,
     };
     const course = await prisma.course.update({
@@ -237,7 +237,7 @@ exports.updateCourseStatus = async (req, res, next) => {
     });
     await audit(req, 'course.status.update', 'Course', course.id, { status: previous.status }, lifecycle);
     await clearCache('cache:/api/courses');
-    res.status(200).json({ success: true, data: course });
+    res.status(200).json({ success: true, data: formatPrice(course) });
   } catch (error) {
     next(error);
   }

@@ -388,7 +388,7 @@ exports.getAnalytics = async (req, res, next) => {
     const activeInstructors = userCount('instructor', 'approved');
     const totalCourses = courseCount();
     const publishedCourses = courseCount('approved');
-    const draftCourses = courseCount('draft');
+    const draftCourses = 0;
     const pendingCourses = courseCount('pending');
     res.json({
       success: true,

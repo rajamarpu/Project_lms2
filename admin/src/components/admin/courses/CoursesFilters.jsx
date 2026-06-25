@@ -11,9 +11,12 @@ const CoursesFilters = ({
   onSearchChange,
   categoryFilter,
   onCategoryChange,
+  courseTypeFilter,
+  onCourseTypeChange,
   levelFilter,
   onLevelChange,
   categories,
+  courseTypes,
   resultCount,
 }) => (
   <div className="relative z-10 flex flex-wrap gap-3 items-center rounded-2xl p-4 border shadow-lg admin-surface border-[var(--admin-border)]">
@@ -24,7 +27,7 @@ const CoursesFilters = ({
       />
       <input
         type="text"
-        placeholder="Search courses by title or category..."
+        placeholder="Search by title, category, course type, or teacher..."
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
         className={inputClass}
@@ -37,6 +40,21 @@ const CoursesFilters = ({
         {categories.map((c) => (
           <option key={c} value={c}>
             {c}
+          </option>
+        ))}
+      </select>
+      <MdKeyboardArrowDown
+        className="absolute right-3 top-1/2 -translate-y-1/2 admin-text-secondary pointer-events-none"
+        size={16}
+      />
+    </div>
+
+    <div className="relative min-w-[150px]">
+      <select value={courseTypeFilter} onChange={(e) => onCourseTypeChange(e.target.value)} className={selectClass}>
+        <option value="">Course Type</option>
+        {courseTypes.map((type) => (
+          <option key={type} value={type}>
+            {type}
           </option>
         ))}
       </select>

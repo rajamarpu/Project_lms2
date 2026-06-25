@@ -24,6 +24,15 @@ const AdminRoute = () => {
       })
       .catch((error) => {
         if (error.name === 'AbortError') return;
+
+        // Network error (server unreachable) – keep the session so the
+        // app can retry on the next action instead of logging the admin out.
+        if (!error.message || error.message === 'Failed to fetch' || error.message === 'NetworkError') {
+          setAccess('allowed');
+          return;
+        }
+
+        // Auth failure – clear session
         localStorage.removeItem('role');
         localStorage.removeItem('lms_token');
         localStorage.removeItem('lms_user');

@@ -1,103 +1,124 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Award, Calendar, ExternalLink, Loader2, ArrowRight } from "lucide-react";
+import { ArrowRight, Award, BadgeCheck, ExternalLink, Loader2, Sparkles, ShieldCheck } from "lucide-react";
 import { platformApi } from "@/api/platform.api";
 import { useAuth } from "@/store/AuthContext";
 
 export const CertificatesList = () => {
   const { user } = useAuth();
   const [certificates, setCertificates] = useState<Array<{ id: string; verificationId: string; issuedAt?: string; courseId: string; course: { title: string } }>>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCertificates = async () => {
+    const load = async () => {
       try {
         const res = await platformApi.certificates();
         setCertificates(res.data?.data || []);
-      } catch (error) {
-        console.error("Failed to fetch certificates:", error);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
     if (user) {
-      fetchCertificates();
+      void load();
     } else {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, [user]);
 
-  if (isLoading) {
+  const stats = useMemo(
+    () => [
+      { value: certificates.length, label: "Verified certificates", icon: Award },
+      { value: "Public", label: "Verification mode", icon: ShieldCheck },
+      { value: "PDF", label: "Export format", icon: BadgeCheck },
+    ],
+    [certificates.length],
+  );
+
+  if (loading) {
     return (
       <div className="container py-20 flex justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="container py-12">
-      <div className="mb-10 text-center max-w-2xl mx-auto">
-        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
-          <Award className="w-8 h-8" />
+    <div className="page-shell">
+      <section className="portal-hero relative overflow-hidden rounded-[2rem] border border-border p-6 shadow-[var(--shadow-overlay)] md:p-8">
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-background/90 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary shadow-sm">
+              <Sparkles className="h-4 w-4" />
+              Certificates
+            </div>
+            <h1 className="brand-heading mt-5 text-4xl font-extrabold tracking-tight md:text-6xl">Verified proof of learning, ready to share.</h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 brand-body md:text-base">
+              View completed credentials, open certificate details, and keep your earned outcomes in one place.
+            </p>
+          </div>
+          <Link to="/courses" className="btn-outline-teal">
+            Explore courses
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-        <h1 className="font-display font-bold text-4xl mb-4">My Certificates</h1>
-        <p className="text-muted-foreground text-lg">
-          View, download, and share the certificates you've earned from completing courses on UptoSkills.
-        </p>
-      </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {stats.map(({ value, label, icon: Icon }) => (
+            <div key={label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <Icon className="h-5 w-5 text-primary" />
+              <p className="mt-4 text-2xl font-extrabold text-foreground">{value}</p>
+              <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {!user ? (
-        <div className="text-center py-20 glass-card">
-          <p className="text-xl font-medium mb-4">Please log in to view your certificates.</p>
-          <Link to="/login" className="btn-primary inline-flex">Log In</Link>
+        <div className="mt-8 rounded-2xl border border-border bg-card p-10 text-center">
+          <p className="mb-4 text-xl font-medium">Please log in to view your certificates.</p>
+          <Link to="/login" className="btn-primary inline-flex">
+            Log in
+          </Link>
         </div>
       ) : certificates.length === 0 ? (
-        <div className="text-center py-20 glass-card">
-          <Award className="w-16 h-16 text-muted-foreground/30 mx-auto mb-6" />
-          <h3 className="text-2xl font-semibold mb-2">No certificates yet</h3>
-          <p className="text-muted-foreground mb-8">
-            Complete your enrolled courses to earn certificates and show off your new skills!
+        <div className="mt-8 rounded-2xl border border-border bg-card p-10 text-center">
+          <Award className="mx-auto mb-6 h-16 w-16 text-muted-foreground/30" />
+          <h3 className="mb-2 text-2xl font-semibold">No certificates yet</h3>
+          <p className="mb-8 text-muted-foreground">
+            Complete an eligible course to earn your first credential.
           </p>
           <Link to="/courses" className="btn-primary inline-flex items-center gap-2">
-            Explore Courses <ArrowRight className="w-4 h-4" />
+            Explore courses
+            <ExternalLink className="h-4 w-4" />
           </Link>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {certificates.map((cert) => (
-            <div key={cert.id} className="glass-card flex flex-col overflow-hidden group hover:border-primary/50 transition-colors">
-              {/* Preview Image (Placeholder styling for aesthetic) */}
-              <div className="aspect-[1.4] bg-muted relative overflow-hidden flex flex-col items-center justify-center p-6 text-center border-b border-border">
-                <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary via-background to-background"></div>
-                <Award className="w-12 h-12 text-primary mb-3 drop-shadow-sm" />
-                <h4 className="font-display font-bold text-lg leading-tight z-10 text-foreground">{cert.course.title}</h4>
-                <p className="text-xs text-muted-foreground mt-2 z-10 font-mono">ID: {cert.verificationId}</p>
+            <article key={cert.id} className="group flex flex-col overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:border-primary/30">
+              <div className="relative aspect-[1.35] overflow-hidden border-b border-border bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-6 text-center">
+                <Award className="mx-auto mb-3 h-12 w-12 text-primary" />
+                <h4 className="relative z-10 text-lg font-bold leading-tight text-foreground">{cert.course.title}</h4>
+                <p className="relative z-10 mt-2 text-xs font-mono text-muted-foreground">ID: {cert.verificationId}</p>
               </div>
-              
-              <div className="p-6 flex flex-col flex-1">
-                <h3 className="font-semibold text-lg mb-2 line-clamp-1" title={cert.course.title}>
+
+              <div className="flex flex-1 flex-col p-6">
+                <h3 className="mb-2 line-clamp-1 text-lg font-semibold" title={cert.course.title}>
                   {cert.course.title}
                 </h3>
-                
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    Issued: {cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString() : 'Pending'}
-                  </span>
-                </div>
-                
-                <div className="mt-auto">
-                  <Link 
-                    to={`/certificate/${cert.courseId}`} 
-                    className="w-full inline-flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground py-2.5 rounded-lg font-medium transition-colors"
-                  >
-                    View Certificate <ExternalLink className="w-4 h-4" />
-                  </Link>
-                </div>
+                <p className="mb-6 text-sm text-muted-foreground">
+                  Issued: {cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString() : "Pending"}
+                </p>
+                <Link
+                  to={`/certificate/${cert.courseId}`}
+                  className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary/10 px-4 py-3 font-medium text-primary transition hover:bg-primary hover:text-primary-foreground"
+                >
+                  View certificate
+                  <ExternalLink className="h-4 w-4" />
+                </Link>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}

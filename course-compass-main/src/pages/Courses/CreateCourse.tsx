@@ -73,7 +73,7 @@ const CreateCourse = () => {
           Create a <span className="text-gradient">New Course</span>
         </h1>
         <p className="text-muted-foreground/80">
-          Share your knowledge with the world using AI celebrity avatars.
+          Share your knowledge with the world using AI-assisted course drafts and structured lessons.
         </p>
       </div>
 
@@ -81,7 +81,7 @@ const CreateCourse = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
-              <span>⚠️</span> {error}
+              <span>!</span> {error}
             </div>
           )}
 
@@ -167,7 +167,7 @@ const CreateCourse = () => {
               {thumbStatus === "ok"      && <CheckCircle2 className="absolute right-3 top-3.5 w-4 h-4 text-secondary" />}
               {thumbStatus === "error"   && <ImageOff className="absolute right-3 top-3.5 w-4 h-4 text-destructive" />}
             </div>
-            <p className="text-xs text-muted-foreground">Use a direct image link (ending in .jpg / .png / .webp). Getty, Shutterstock etc. block hotlinking — use <a href="https://unsplash.com" target="_blank" rel="noreferrer" className="text-secondary underline">Unsplash</a> or <a href="https://imgur.com" target="_blank" rel="noreferrer" className="text-secondary underline">Imgur</a> instead.</p>
+            <p className="text-xs text-muted-foreground">Use a direct image link (ending in .jpg / .png / .webp). Getty and Shutterstock often block hotlinking, so use <a href="https://unsplash.com" target="_blank" rel="noreferrer" className="text-secondary underline">Unsplash</a> or <a href="https://imgur.com" target="_blank" rel="noreferrer" className="text-secondary underline">Imgur</a> instead.</p>
           </div>
 
           {/* Preview */}

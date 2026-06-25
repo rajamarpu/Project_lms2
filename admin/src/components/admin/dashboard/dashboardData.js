@@ -2,7 +2,6 @@ export const todaySummary = {
   newEnrollments: 47,
   coursesPublished: 2,
   certificatesIssued: 18,
-  liveSessions: 5,
 };
 
 /** Compact metrics for Recent Activity — Today's Platform Summary */

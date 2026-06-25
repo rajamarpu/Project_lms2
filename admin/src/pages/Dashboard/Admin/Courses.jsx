@@ -11,6 +11,7 @@ import {
   loadCourses,
   normalizeCourse,
   getCategories,
+  getCourseTypes,
   computeRevenue,
 } from '../../../utils/courseUtils';
 import { exportToCSV } from '../../../utils/export';
@@ -20,6 +21,7 @@ const Courses = () => {
   const [courses, setCourses] = useState(loadCourses);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [courseTypeFilter, setCourseTypeFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
   const [notice, setNotice] = useState(null);
 
@@ -37,6 +39,17 @@ const Courses = () => {
   }, [notice]);
 
   const categories = useMemo(() => getCategories(courses), [courses]);
+  const courseTypes = useMemo(
+    () => getCourseTypes(courses, categoryFilter),
+    [courses, categoryFilter]
+  );
+
+  useEffect(() => {
+    if (!courseTypeFilter) return;
+    if (!courseTypes.includes(courseTypeFilter)) {
+      setCourseTypeFilter('');
+    }
+  }, [courseTypeFilter, courseTypes]);
 
   const filtered = useMemo(
     () =>
@@ -46,12 +59,14 @@ const Courses = () => {
           !q ||
           c.title.toLowerCase().includes(q) ||
           (c.category && c.category.toLowerCase().includes(q)) ||
+          (c.courseType && c.courseType.toLowerCase().includes(q)) ||
           (c.teacher && c.teacher.toLowerCase().includes(q));
         const matchCat = !categoryFilter || c.category === categoryFilter;
+        const matchType = !courseTypeFilter || c.courseType === courseTypeFilter;
         const matchLvl = !levelFilter || c.level === levelFilter;
-        return matchQ && matchCat && matchLvl;
+        return matchQ && matchCat && matchType && matchLvl;
       }),
-    [courses, searchQuery, categoryFilter, levelFilter]
+    [courses, searchQuery, categoryFilter, courseTypeFilter, levelFilter]
   );
 
   const activeCount = courses.filter((c) => c.active).length;
@@ -129,6 +144,7 @@ const Courses = () => {
         'level',
         'xp',
         'category',
+        'courseType',
         'lessons',
         'projects',
         'rating',
@@ -146,7 +162,7 @@ const Courses = () => {
     showNotice('Export started.');
   };
 
-  const hasFilters = Boolean(searchQuery || categoryFilter || levelFilter);
+  const hasFilters = Boolean(searchQuery || categoryFilter || courseTypeFilter || levelFilter);
 
   return (
     <div className="admin-page space-y-6 md:space-y-8 animate-fade-in relative z-10 pb-16 min-h-full rounded-2xl p-4 md:p-6 -m-4 md:-m-6 border border-[var(--admin-border)] shadow-[var(--admin-shadow-card)] bg-[var(--admin-page-panel)]">
@@ -167,9 +183,12 @@ const Courses = () => {
         onSearchChange={setSearchQuery}
         categoryFilter={categoryFilter}
         onCategoryChange={setCategoryFilter}
+        courseTypeFilter={courseTypeFilter}
+        onCourseTypeChange={setCourseTypeFilter}
         levelFilter={levelFilter}
         onLevelChange={setLevelFilter}
         categories={categories}
+        courseTypes={courseTypes}
         resultCount={filtered.length}
       />
 

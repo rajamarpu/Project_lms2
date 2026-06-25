@@ -44,7 +44,6 @@ export function scaleTodaySummary(summary, start, end) {
     newEnrollments: Math.max(1, Math.round(summary.newEnrollments * scale)),
     coursesPublished: Math.max(0, Math.round(summary.coursesPublished * scale)),
     certificatesIssued: Math.max(0, Math.round(summary.certificatesIssued * scale)),
-    liveSessions: Math.max(1, Math.round(summary.liveSessions * scale)),
   };
 }
 

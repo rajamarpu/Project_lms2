@@ -50,41 +50,94 @@ export function Button({ children, variant = 'primary', icon: Icon, className = 
   );
 }
 
-export function StatWidget({ label, value, delta, tone = 'blue', icon: Icon, footer, source = 'Live database', onClick, destination }) {
-  const displayValue = value === null || value === undefined || value === '' ? '—' : value;
+export function MetricCard({
+  title,
+  label,
+  value,
+  tone = 'blue',
+  icon: Icon,
+  badge,
+  footer,
+  children,
+  progress,
+  progressColor,
+  source,
+  destination,
+  onClick,
+  className = '',
+  delay = 0,
+}) {
+  const displayLabel = title || label || '';
+  const displayValue = value === null || value === undefined || value === '' ? '-' : value;
   const interactive = typeof onClick === 'function';
+  const badgeText = badge || source;
+
   return (
     <motion.article
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.18, ease: 'easeOut' }}
-      className={`enterprise-card stat-widget tone-${tone} relative ${interactive ? 'cursor-pointer hover:border-[var(--accent)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--accent)]' : ''}`}
-      aria-label={interactive ? undefined : `${label}: ${displayValue}`}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: 'easeOut', delay }}
+      whileHover={{ y: -6 }}
+      onClick={onClick}
+      className={`metric-card tone-${tone} ${interactive ? 'metric-card-interactive cursor-pointer' : ''} ${className}`}
+      aria-label={interactive ? undefined : `${displayLabel}: ${displayValue}`}
     >
-      {interactive && <button type="button" className="absolute inset-0 z-20 rounded-[inherit] cursor-pointer" aria-label={`${label}: ${displayValue}. Open ${destination || 'details'}`} onClick={onClick}><span className="sr-only">Open {destination || label}</span></button>}
-      <span className="stat-accent-line" aria-hidden />
+      <span className="metric-orb metric-orb-a" aria-hidden />
+      <span className="metric-orb metric-orb-b" aria-hidden />
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="admin-label">{label}</p>
-          <p className="stat-value">{displayValue}</p>
-        </div>
-        {Icon && (
-          <div className="stat-icon">
-            <Icon size={18} aria-hidden />
+        <div className="flex min-w-0 items-start gap-3">
+          {Icon && (
+            <div className="metric-icon">
+              <Icon size={18} aria-hidden />
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="metric-label">{displayLabel}</p>
+            <p className="metric-value">{displayValue}</p>
           </div>
-        )}
+        </div>
+        {badgeText && <span className="metric-badge">{badgeText}</span>}
       </div>
-      <div className="stat-meta">
-        {delta && (
-          <span className="stat-delta">
-            <LuArrowUpRight size={13} aria-hidden />
-            {delta}
-          </span>
-        )}
-        {footer && <span className="stat-detail">{footer}</span>}
-      </div>
-      <div className="stat-source"><span aria-hidden />{source}</div>
-      {destination && <p className="mt-3 text-xs font-semibold text-[var(--accent)]">Open {destination} →</p>}
+
+      {footer && <p className="metric-footer">{footer}</p>}
+
+      {progress !== undefined && progress !== null && (
+        <div className="mt-5">
+          <div className="admin-progress">
+            <span
+              style={{
+                width: `${Math.max(0, Math.min(100, Number(progress) || 0))}%`,
+                background: progressColor || 'var(--accent)',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {children}
+
+      {destination && (
+        <p className="mt-4 text-xs font-semibold text-[var(--accent)]">
+          Open {destination} {'->'}
+        </p>
+      )}
     </motion.article>
+  );
+}
+
+export function StatWidget({ label, value, delta, tone = 'blue', icon: Icon, footer, source = 'Live database', onClick, destination }) {
+  return (
+    <MetricCard
+      label={label}
+      value={value}
+      tone={tone}
+      icon={Icon}
+      badge={delta}
+      footer={footer}
+      source={source}
+      destination={destination}
+      onClick={onClick}
+    />
   );
 }
 
@@ -144,7 +197,18 @@ export function EnterpriseTable({ columns, rows, emptyTitle = 'No records found'
             <tr>
               {columns.map((column) => (
                 <th key={column.key} scope="col" aria-sort={column.sortable ? 'none' : undefined}>
-                  {column.sortable && onSort ? <button type="button" onClick={() => onSort(column.key)} className="inline-flex items-center gap-1 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">{column.header}<LuChevronDown size={13} aria-hidden /></button> : <span>{column.header}</span>}
+                  {column.sortable && onSort ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort(column.key)}
+                      className="inline-flex items-center gap-1 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                    >
+                      {column.header}
+                      <LuChevronDown size={13} aria-hidden />
+                    </button>
+                  ) : (
+                    <span>{column.header}</span>
+                  )}
                 </th>
               ))}
             </tr>
@@ -160,7 +224,10 @@ export function EnterpriseTable({ columns, rows, emptyTitle = 'No records found'
           </tbody>
         </table>
       </div>
-      <div className="flex flex-col gap-2 border-t px-4 py-3 text-xs text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)' }}>
+      <div
+        className="flex flex-col gap-2 border-t px-4 py-3 text-xs text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between"
+        style={{ borderColor: 'var(--border)' }}
+      >
         <span>{rows.length} records shown</span>
         <span>Current filtered result set</span>
       </div>

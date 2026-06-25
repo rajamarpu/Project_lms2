@@ -9,7 +9,7 @@ const { errorHandler } = require('./middlewares/error.middleware');
 const setupSwagger = require('./docs/swagger');
 const { RedisStore } = require('rate-limit-redis');
 const redisClient = require('./services/redis.service');
-const { prisma } = require('./config/db');
+const { isDatabaseConnected } = require('./config/db');
 
 const app = express();
 
@@ -112,18 +112,26 @@ app.get('/', (req, res) => {
 });
 
 // Robust Health Check
-app.get('/health', async (req, res) => {
+const healthCheck = async (req, res) => {
   try {
-    // Check DB
-    await prisma.$queryRaw`SELECT 1`;
-    // Check Redis
-    // await redisClient.ping();
-    res.status(200).json({ status: 'ok', db: 'ok', redis: 'ok' });
+    // Check Redis when the client supports it.
+    const redisStatus = typeof redisClient?.ping === 'function'
+      ? await redisClient.ping().then(() => 'ok').catch(() => 'error')
+      : 'unavailable';
+    res.status(200).json({
+      status: 'ok',
+      db: isDatabaseConnected() ? 'ok' : 'unknown',
+      redis: redisStatus
+    });
   } catch (error) {
     logger.error({ err: error }, 'Health check failed');
     res.status(503).json({ status: 'error', details: error.message });
   }
-});
+};
+
+app.get('/health', healthCheck);
+app.get('/api/health', healthCheck);
+app.get('/api/v1/health', healthCheck);
 
 // Global Error Handler
 app.use(errorHandler);

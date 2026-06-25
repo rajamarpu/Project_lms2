@@ -146,6 +146,19 @@ const CourseCard = ({
           {course.title}
         </h3>
 
+        <div className="flex flex-wrap items-center gap-2 -mt-1">
+          {course.courseType && (
+            <span className="rounded-full border border-cyan-400/25 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
+              {course.courseType}
+            </span>
+          )}
+          {course.category && (
+            <span className="text-[10px] font-medium admin-text-muted">
+              in {course.category}
+            </span>
+          )}
+        </div>
+
         <p className="flex items-center gap-1.5 text-xs admin-text-secondary -mt-1">
           <MdSchool size={14} className="text-[#8B5CF6] shrink-0" />
           <span className="truncate">{course.teacher || 'Unassigned'}</span>

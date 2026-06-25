@@ -6,7 +6,6 @@ import {
   MdAdd,
   MdPersonAdd,
   MdAssessment,
-  MdTrendingUp,
   MdSchool,
   MdEmojiEvents,
 } from 'react-icons/md';
@@ -65,7 +64,6 @@ const DashboardHero = () => {
                 { label: 'New enrollments', value: summary.newEnrollments, icon: MdPersonAdd, color: '#3B82F6' },
                 { label: 'Courses published', value: summary.coursesPublished, icon: MdSchool, color: '#8B5CF6' },
                 { label: 'Certificates', value: summary.certificatesIssued, icon: MdEmojiEvents, color: '#10B981' },
-                { label: 'Live sessions', value: summary.liveSessions, icon: MdTrendingUp, color: '#06B6D4' },
               ].map((stat) => {
                 const Icon = stat.icon;
                 return (

@@ -4,18 +4,13 @@ import {
   MdClose, MdUploadFile, MdBook, MdTitle, MdDescription,
   MdLayers, MdCategory, MdTimer, MdLanguage, MdPerson,
   MdAttachMoney, MdLocalOffer, MdSchool, MdAssignment,
-  MdCheckCircle, MdOutlineFiberManualRecord, MdSearch
+  MdCheckCircle, MdSearch, MdKeyboardArrowDown
 } from 'react-icons/md';
-
-// Category Options
-const CATEGORIES = [
-  'DSA',
-  'Web Development',
-  'Mobile Development',
-  'AI/ML',
-  'DevOps',
-  'Programming Languages'
-];
+import { platformAdminApi } from '../../../api/platform';
+import {
+  COURSE_CATEGORY_OPTIONS,
+  COURSE_TYPE_OPTIONS,
+} from '../../../utils/courseUtils';
 
 // Level Options
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
@@ -29,6 +24,73 @@ const DEFAULT_TEACHERS = [
   { id: 5, name: 'Katrina Kaif' }
 ];
 
+const DropdownField = ({
+  icon: Icon,
+  value,
+  options,
+  isOpen,
+  onToggle,
+  onSelect,
+  placeholder = 'Select an option'
+}) => (
+  <div className="relative" data-dropdown-root="true">
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`admin-drawer-input flex min-h-[50px] w-full items-center gap-3 pl-11 pr-11 text-left ${
+        isOpen ? 'admin-drawer-input-open' : ''
+      }`}
+      aria-haspopup="listbox"
+      aria-expanded={isOpen}
+    >
+      <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+      <span className={value ? 'text-[var(--admin-text-primary)]' : 'text-[var(--admin-text-muted)]'}>
+        {value || placeholder}
+      </span>
+      <MdKeyboardArrowDown
+        className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--admin-text-muted)] transition-transform duration-200 ${
+          isOpen ? 'rotate-180' : ''
+        }`}
+        size={20}
+      />
+    </button>
+
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          className="absolute z-50 left-0 right-0 mt-2 overflow-hidden rounded-xl border bg-[var(--admin-surface-raised)] shadow-2xl"
+          style={{ borderColor: 'var(--admin-border)' }}
+          role="listbox"
+        >
+          {options.map((option) => {
+            const isSelected = value === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => onSelect(option)}
+                className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-all ${
+                  isSelected
+                    ? 'bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--accent)]'
+                    : 'text-[var(--admin-text-primary)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]'
+                }`}
+                role="option"
+                aria-selected={isSelected}
+              >
+                <span>{option}</span>
+                {isSelected && <MdCheckCircle size={16} className="text-[var(--accent)]" />}
+              </button>
+            );
+          })}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+);
+
 const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
   const [form, setForm] = useState({
     title: '',
@@ -37,6 +99,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
     fullDesc: '',
     level: 'Beginner',
     category: 'Web Development',
+    courseType: COURSE_TYPE_OPTIONS['Web Development']?.[0] || 'Frontend',
     duration: '',
     language: 'English',
     status: 'Published', // Draft, Published, Archived
@@ -48,13 +111,16 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
     certificate: true,
     visibility: 'Public', // Public, Private
     featured: false,
-    avatar: null
+    avatar: null,
+    thumbnail: null
   });
 
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [teachers, setTeachers] = useState(DEFAULT_TEACHERS);
   const [searchTeacherQuery, setSearchTeacherQuery] = useState('');
   const [isTeacherDropdownOpen, setIsTeacherDropdownOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [errors, setErrors] = useState({});
   const teacherDropdownRef = useRef(null);
 
@@ -83,6 +149,9 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
   // Handle outside click to close searchable teacher dropdown
   useEffect(() => {
     const handleOutsideClick = (e) => {
+      if (!e.target.closest('[data-dropdown-root="true"]')) {
+        setActiveDropdown(null);
+      }
       if (teacherDropdownRef.current && !teacherDropdownRef.current.contains(e.target)) {
         setIsTeacherDropdownOpen(false);
       }
@@ -101,6 +170,10 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
         fullDesc: courseToEdit.fullDesc || 'Detailed curriculum covering all fundamentals and best practices.',
         level: courseToEdit.level || 'Beginner',
         category: courseToEdit.category || 'Web Development',
+        courseType:
+          courseToEdit.courseType ||
+          COURSE_TYPE_OPTIONS[courseToEdit.category || 'Web Development']?.[0] ||
+          'Frontend',
         duration: courseToEdit.hours || courseToEdit.duration || '30',
         language: courseToEdit.language || 'English',
         status: courseToEdit.status || (courseToEdit.active ? 'Published' : 'Draft'),
@@ -112,10 +185,12 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
         certificate: courseToEdit.certificate !== undefined ? courseToEdit.certificate : true,
         visibility: courseToEdit.visibility || 'Public',
         featured: courseToEdit.featured !== undefined ? courseToEdit.featured : false,
-        avatar: courseToEdit.avatar || null
+        avatar: courseToEdit.avatar || courseToEdit.thumbnail || null,
+        thumbnail: courseToEdit.thumbnail || courseToEdit.avatar || null
       });
-      setAvatarPreview(courseToEdit.avatar || null);
+      setAvatarPreview(courseToEdit.thumbnail || courseToEdit.avatar || null);
       setErrors({});
+      setActiveDropdown(null);
     } else {
       // Reset form
       setForm({
@@ -125,6 +200,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
         fullDesc: '',
         level: 'Beginner',
         category: 'Web Development',
+        courseType: COURSE_TYPE_OPTIONS['Web Development']?.[0] || 'Frontend',
         duration: '',
         language: 'English',
         status: 'Published',
@@ -136,10 +212,12 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
         certificate: true,
         visibility: 'Public',
         featured: false,
-        avatar: null
+        avatar: null,
+        thumbnail: null
       });
       setAvatarPreview(null);
       setErrors({});
+      setActiveDropdown(null);
     }
   }, [courseToEdit, isOpen, teachers]);
 
@@ -171,15 +249,45 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
     }));
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setAvatarPreview(reader.result);
-      setForm(prev => ({ ...prev, avatar: reader.result }));
-    };
-    reader.readAsDataURL(file);
+
+    const objectUrl = URL.createObjectURL(file);
+    setAvatarPreview(objectUrl);
+    setIsUploadingImage(true);
+    setErrors(prev => ({ ...prev, thumbnail: undefined }));
+
+    try {
+      const response = await platformAdminApi.uploadImage(file);
+      const uploadedUrl = response?.url;
+
+      if (!uploadedUrl) {
+        throw new Error('Image upload did not return a file URL.');
+      }
+
+      setForm(prev => ({
+        ...prev,
+        avatar: uploadedUrl,
+        thumbnail: uploadedUrl
+      }));
+    } catch (error) {
+      console.error('Course thumbnail upload failed:', error);
+      setAvatarPreview(courseToEdit?.thumbnail || courseToEdit?.avatar || null);
+      setForm(prev => ({
+        ...prev,
+        avatar: courseToEdit?.avatar || null,
+        thumbnail: courseToEdit?.thumbnail || null
+      }));
+      setErrors(prev => ({
+        ...prev,
+        thumbnail: error?.response?.data?.message || error.message || 'Failed to upload the course image.'
+      }));
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
   };
 
   const handleSave = (statusOverride) => {
@@ -189,6 +297,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
     if (form.discountPrice && form.price && Number(form.discountPrice) > Number(form.price)) {
       nextErrors.discountPrice = 'Discount price should not exceed the base price.';
     }
+    if (isUploadingImage) nextErrors.thumbnail = 'Please wait for the image upload to finish.';
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
@@ -230,6 +339,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
       fullDesc: form.fullDesc,
       level: form.level,
       category: form.category,
+      courseType: form.courseType,
       lessons: parseInt(form.lessons) || 12,
       projects: parseInt(form.projects) || 2,
       certificate: form.certificate,
@@ -246,6 +356,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
       gradient,
       icon,
       avatar: form.avatar,
+      thumbnail: form.thumbnail || form.avatar,
       rating: courseToEdit?.rating || 4.8,
       students: courseToEdit?.students || 0,
       completion: courseToEdit?.completion || 0
@@ -260,10 +371,28 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
     setForm(prev => ({ ...prev, [key]: e.target.value }));
   };
 
+  const selectDropdownValue = (key, value) => {
+    setErrors(prev => ({ ...prev, [key]: undefined }));
+    setForm(prev => {
+      if (key === 'category') {
+        const nextTypes = COURSE_TYPE_OPTIONS[value] || [];
+        return {
+          ...prev,
+          category: value,
+          courseType: nextTypes.includes(prev.courseType) ? prev.courseType : nextTypes[0] || ''
+        };
+      }
+
+      return { ...prev, [key]: value };
+    });
+    setActiveDropdown(null);
+  };
+
   // Filtered teachers list based on search
   const filteredTeachers = teachers.filter(t => 
     t.name.toLowerCase().includes(searchTeacherQuery.toLowerCase())
   );
+  const availableCourseTypes = COURSE_TYPE_OPTIONS[form.category] || [];
 
   const inputCls = 'admin-drawer-input';
   const textareaCls = 'admin-drawer-input min-h-28 resize-none';
@@ -347,18 +476,34 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                         <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <MdUploadFile size={32} className="text-white" />
-                          <span className="text-xs text-white ml-2 font-semibold">Change Image</span>
+                          <span className="text-xs text-white ml-2 font-semibold">
+                            {isUploadingImage ? 'Uploading...' : 'Change Image'}
+                          </span>
                         </div>
+                        {isUploadingImage && (
+                          <div className="absolute inset-x-0 bottom-0 bg-black/70 px-3 py-2 text-[11px] font-semibold text-white">
+                            Uploading course image...
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center p-6 text-center">
                         <MdUploadFile size={36} className="text-purple-400/80 mb-2 group-hover:-translate-y-1.5 transition-transform duration-300" />
-                        <span className="text-sm font-bold text-[var(--admin-text-primary)]">Drag and drop or browse</span>
-                        <span className="text-[11px] text-[var(--admin-text-muted)] mt-1">Supports PNG or JPG up to 2MB</span>
+                        <span className="text-sm font-bold text-[var(--admin-text-primary)]">Upload course cover image</span>
+                        <span className="text-[11px] text-[var(--admin-text-muted)] mt-1">Supports PNG, JPG, GIF, or WebP up to 5MB</span>
                       </div>
                     )}
                     <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" aria-label="Upload course thumbnail" />
                   </label>
+                  <div className="mt-2 flex items-center justify-between gap-3 text-[11px]">
+                    <span className="text-[var(--admin-text-muted)]">
+                      Uploaded images are saved and reused as the course thumbnail.
+                    </span>
+                    {form.thumbnail && !isUploadingImage && (
+                      <span className="font-semibold text-emerald-400">Image ready</span>
+                    )}
+                  </div>
+                  {errors.thumbnail && <p className={errorCls}>{errors.thumbnail}</p>}
                 </motion.div>
 
                 {/* ── SECTION 2: BASIC INFORMATION ── */}
@@ -445,35 +590,45 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                   <div className="grid gap-4 sm:grid-cols-2">
                     {/* Level */}
                     <div>
-                      <label className={labelCls}>Level *</label>
-                      <div className="relative">
-                        <MdLayers className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                        <select
-                          value={form.level}
-                          onChange={set('level')}
-                          className="admin-drawer-input pl-11 pr-10 cursor-pointer appearance-none"
-                        >
-                          {LEVELS.map(lvl => <option key={lvl} value={lvl}>{lvl}</option>)}
-                        </select>
-                        <MdOutlineFiberManualRecord className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={10} />
-                      </div>
+                      <label className={labelCls}>Course Level *</label>
+                      <DropdownField
+                        icon={MdLayers}
+                        value={form.level}
+                        options={LEVELS}
+                        isOpen={activeDropdown === 'level'}
+                        onToggle={() => setActiveDropdown(activeDropdown === 'level' ? null : 'level')}
+                        onSelect={(value) => selectDropdownValue('level', value)}
+                      />
                     </div>
 
                     {/* Category */}
                     <div>
                       <label className={labelCls}>Category *</label>
-                      <div className="relative">
-                        <MdCategory className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                        <select
-                          value={form.category}
-                          onChange={set('category')}
-                          className="admin-drawer-input pl-11 pr-10 cursor-pointer appearance-none"
-                        >
-                          {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                        </select>
-                        <MdOutlineFiberManualRecord className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={10} />
-                      </div>
+                      <DropdownField
+                        icon={MdCategory}
+                        value={form.category}
+                        options={COURSE_CATEGORY_OPTIONS}
+                        isOpen={activeDropdown === 'category'}
+                        onToggle={() => setActiveDropdown(activeDropdown === 'category' ? null : 'category')}
+                        onSelect={(value) => selectDropdownValue('category', value)}
+                      />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>Course Type *</label>
+                    <DropdownField
+                      icon={MdBook}
+                      value={form.courseType}
+                      options={availableCourseTypes}
+                      isOpen={activeDropdown === 'courseType'}
+                      onToggle={() => setActiveDropdown(activeDropdown === 'courseType' ? null : 'courseType')}
+                      onSelect={(value) => selectDropdownValue('courseType', value)}
+                      placeholder="Select a course type"
+                    />
+                    <p className="mt-1.5 text-[11px] text-[var(--admin-text-muted)]">
+                      Example: C, Python, and Java all belong to Programming Languages.
+                    </p>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -772,6 +927,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                 <button
                   type="button"
                   onClick={() => handleSave('Draft')}
+                  disabled={isUploadingImage}
                   className="admin-btn border border-amber-500/30 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
                 >
                   Save Draft
@@ -781,9 +937,10 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
                 <button
                   type="button"
                   onClick={() => handleSave('Published')}
+                  disabled={isUploadingImage}
                   className="admin-btn admin-btn-primary"
                 >
-                  {courseToEdit ? 'Publish Updates' : 'Publish Course'}
+                  {isUploadingImage ? 'Uploading image...' : courseToEdit ? 'Publish Updates' : 'Publish Course'}
                 </button>
               </div>
             </div>

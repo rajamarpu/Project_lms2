@@ -5,13 +5,19 @@ const { addEmailJob } = require('../queues/email.queue');
 const { issueSession, rotateSession, revokeCurrentSession } = require('../services/session.service');
 const { isStrongPassword } = require('../utils/platformRules');
 
+const normalizeEmail = (value) => String(value ?? '').trim().toLowerCase();
+
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
     const { name, password } = req.body;
-    const email = req.body.email.trim().toLowerCase();
+    const email = normalizeEmail(req.body.email);
+
+    if (!name?.trim() || !email || !password) {
+      return res.status(400).json({ success: false, error: 'Please provide a name, email, and password' });
+    }
 
     // Check if user already exists
     const userExists = await prisma.user.findUnique({ where: { email } });
@@ -70,7 +76,7 @@ exports.register = async (req, res, next) => {
 exports.login = async (req, res, next) => {
   try {
     const { password } = req.body;
-    const email = req.body.email.trim().toLowerCase();
+    const email = normalizeEmail(req.body.email);
 
     if (!email || !password) {
       return res.status(400).json({ success: false, error: 'Please provide an email and password' });
@@ -174,7 +180,7 @@ exports.getMe = async (req, res, next) => {
 // @access  Public
 exports.forgotPassword = async (req, res, next) => {
   try {
-    const { email } = req.body;
+    const email = normalizeEmail(req.body.email);
     if (!email) {
       return res.status(400).json({ success: false, error: 'Please provide an email' });
     }

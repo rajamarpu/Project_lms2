@@ -18,7 +18,7 @@ const systemTheme = (): ResolvedTheme =>
 
 const storedTheme = (): ThemePreference => {
   const value = localStorage.getItem(STORAGE_KEY);
-  return value === "light" || value === "dark" || value === "system" ? value : "system";
+  return value === "light" || value === "dark" || value === "system" ? value : "light";
 };
 
 const applyTheme = (preference: ThemePreference): ResolvedTheme => {

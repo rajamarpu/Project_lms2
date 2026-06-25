@@ -4,35 +4,6 @@ const { audit } = require('../services/audit.service');
 
 const text = (value, max = 5000) => String(value || '').trim().slice(0, max);
 
-exports.listLiveSessions = async (req, res, next) => {
-  try {
-    const where = req.user.role === 'admin' ? {} : { status: { in: ['scheduled', 'live'] } };
-    const data = await prisma.liveSession.findMany({ where, include: { course: { select: { id: true, title: true } }, instructor: { select: { id: true, name: true, avatar: true } } }, orderBy: { startsAt: 'asc' } });
-    res.json({ success: true, data });
-  } catch (error) { next(error); }
-};
-
-exports.createLiveSession = async (req, res, next) => {
-  try {
-    const title = text(req.body.title, 160);
-    const startsAt = new Date(req.body.startsAt);
-    if (!title || Number.isNaN(startsAt.getTime())) return res.status(400).json({ success: false, error: 'Title and valid start time are required' });
-    const data = await prisma.liveSession.create({ data: { title, description: text(req.body.description), courseId: req.body.courseId || null, instructorId: req.body.instructorId || req.user.id, startsAt, durationMinutes: Math.max(15, Math.min(480, Number(req.body.durationMinutes) || 60)), meetingUrl: req.body.meetingUrl || null, status: 'scheduled' } });
-    await audit(req, 'live-session.create', 'LiveSession', data.id, null, data);
-    res.status(201).json({ success: true, data });
-  } catch (error) { next(error); }
-};
-
-exports.deleteLiveSession = async (req, res, next) => {
-  try {
-    const previous = await prisma.liveSession.findUnique({ where: { id: req.params.id } });
-    if (!previous) return res.status(404).json({ success: false, error: 'Live session not found' });
-    await prisma.liveSession.delete({ where: { id: previous.id } });
-    await audit(req, 'live-session.delete', 'LiveSession', previous.id, previous, null);
-    res.json({ success: true, data: {} });
-  } catch (error) { next(error); }
-};
-
 exports.listCommunityTopics = async (_req, res, next) => {
   try {
     const data = await prisma.communityTopic.findMany({ include: { createdBy: { select: { id: true, name: true, avatar: true } }, _count: { select: { posts: true } } }, orderBy: { updatedAt: 'desc' } });
@@ -134,30 +105,74 @@ exports.sendChatMessage = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-exports.listPracticeQuestions = async (req, res, next) => {
+const deckInclude = { cards: { orderBy: { order: 'asc' } }, _count: { select: { cards: true } } };
+
+exports.listFlashcardDecks = async (req, res, next) => {
   try {
-    const where = { active: true, ...(req.query.category ? { category: req.query.category } : {}), ...(req.query.difficulty ? { difficulty: req.query.difficulty } : {}) };
-    const data = await prisma.practiceQuestion.findMany({ where, select: { id: true, category: true, difficulty: true, type: true, prompt: true, options: true, explanation: true }, orderBy: { createdAt: 'desc' }, take: 100 });
+    const isAdmin = req.user?.role === 'admin';
+    const where = isAdmin ? {} : { publishedAt: { not: null } };
+    const include = { _count: { select: { cards: true } } };
+    if (req.user?.id) include.progress = { where: { userId: req.user.id }, take: 1 };
+    const data = await prisma.flashcardDeck.findMany({ where, include, orderBy: { updatedAt: 'desc' } });
     res.json({ success: true, data });
   } catch (error) { next(error); }
 };
 
-exports.createPracticeQuestion = async (req, res, next) => {
+exports.getFlashcardDeck = async (req, res, next) => {
   try {
-    const prompt = text(req.body.prompt, 2000); const category = text(req.body.category, 100);
-    if (!prompt || !category) return res.status(400).json({ success: false, error: 'Prompt and category are required' });
-    const data = await prisma.practiceQuestion.create({ data: { authorId: req.user.id, category, prompt, difficulty: req.body.difficulty || 'medium', type: req.body.type || 'multiple_choice', options: req.body.options, answer: req.body.answer, explanation: text(req.body.explanation, 2000) } });
-    await audit(req, 'practice-question.create', 'PracticeQuestion', data.id, null, { category });
+    const isAdmin = req.user?.role === 'admin';
+    const data = await prisma.flashcardDeck.findFirst({ where: { id: req.params.id, ...(isAdmin ? {} : { publishedAt: { not: null } }) }, include: deckInclude });
+    if (!data) return res.status(404).json({ success: false, error: 'Flashcard deck not found' });
+    res.json({ success: true, data });
+  } catch (error) { next(error); }
+};
+
+exports.createFlashcardDeck = async (req, res, next) => {
+  try {
+    const title = text(req.body.title, 160); const subject = text(req.body.subject, 100); const category = text(req.body.category, 100);
+    const cards = Array.isArray(req.body.cards) ? req.body.cards.filter((card) => text(card.question) && text(card.answer)) : [];
+    if (!title || !subject || !category || !cards.length) return res.status(400).json({ success: false, error: 'Title, subject, category, and at least one card are required' });
+    const data = await prisma.flashcardDeck.create({ data: { title, subject, category, description: text(req.body.description, 1000), topic: text(req.body.topic, 100) || null, difficulty: text(req.body.difficulty, 40) || 'beginner', courseId: req.body.courseId || null, authorId: req.user.id, publishedAt: req.body.published ? new Date() : null, cards: { create: cards.map((card, order) => ({ question: text(card.question, 2000), answer: text(card.answer, 4000), order })) } }, include: deckInclude });
+    await audit(req, 'flashcard-deck.create', 'FlashcardDeck', data.id, null, { title, cards: cards.length });
     res.status(201).json({ success: true, data });
   } catch (error) { next(error); }
 };
 
-exports.validatePracticeAnswer = async (req, res, next) => {
+exports.updateFlashcardDeck = async (req, res, next) => {
   try {
-    const question = await prisma.practiceQuestion.findFirst({ where: { id: req.params.id, active: true } });
-    if (!question) return res.status(404).json({ success: false, error: 'Question not found' });
-    const correct = JSON.stringify(req.body.answer) === JSON.stringify(question.answer);
-    res.json({ success: true, data: { correct, explanation: question.explanation } });
+    const previous = await prisma.flashcardDeck.findUnique({ where: { id: req.params.id } });
+    if (!previous) return res.status(404).json({ success: false, error: 'Flashcard deck not found' });
+    const cards = Array.isArray(req.body.cards) ? req.body.cards.filter((card) => text(card.question) && text(card.answer)) : null;
+    const data = await prisma.$transaction(async (tx) => {
+      if (cards) { await tx.flashcard.deleteMany({ where: { deckId: previous.id } }); }
+      return tx.flashcardDeck.update({ where: { id: previous.id }, data: { ...(req.body.title !== undefined ? { title: text(req.body.title, 160) } : {}), ...(req.body.description !== undefined ? { description: text(req.body.description, 1000) } : {}), ...(req.body.subject !== undefined ? { subject: text(req.body.subject, 100) } : {}), ...(req.body.category !== undefined ? { category: text(req.body.category, 100) } : {}), ...(req.body.topic !== undefined ? { topic: text(req.body.topic, 100) || null } : {}), ...(req.body.difficulty !== undefined ? { difficulty: text(req.body.difficulty, 40) } : {}), ...(req.body.published !== undefined ? { publishedAt: req.body.published ? (previous.publishedAt || new Date()) : null } : {}), ...(cards ? { cards: { create: cards.map((card, order) => ({ question: text(card.question, 2000), answer: text(card.answer, 4000), order })) } } : {}) }, include: deckInclude });
+    });
+    await audit(req, 'flashcard-deck.update', 'FlashcardDeck', data.id, previous, { title: data.title, publishedAt: data.publishedAt });
+    res.json({ success: true, data });
+  } catch (error) { next(error); }
+};
+
+exports.deleteFlashcardDeck = async (req, res, next) => {
+  try {
+    const previous = await prisma.flashcardDeck.findUnique({ where: { id: req.params.id } });
+    if (!previous) return res.status(404).json({ success: false, error: 'Flashcard deck not found' });
+    await prisma.flashcardDeck.delete({ where: { id: previous.id } });
+    await audit(req, 'flashcard-deck.delete', 'FlashcardDeck', previous.id, previous, null);
+    res.json({ success: true, data: {} });
+  } catch (error) { next(error); }
+};
+
+exports.saveFlashcardProgress = async (req, res, next) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(200).json({ success: true, data: null, message: 'Sign in to save flashcard progress.' });
+    }
+    const deck = await prisma.flashcardDeck.findFirst({ where: { id: req.params.id, publishedAt: { not: null } }, include: { _count: { select: { cards: true } } } });
+    if (!deck) return res.status(404).json({ success: false, error: 'Flashcard deck not found' });
+    const currentCard = Math.max(0, Math.min(deck._count.cards - 1, Number(req.body.currentCard) || 0));
+    const viewedCards = Math.max(0, Math.min(deck._count.cards, Number(req.body.viewedCards) || 0));
+    const data = await prisma.flashcardProgress.upsert({ where: { userId_deckId: { userId: req.user.id, deckId: deck.id } }, update: { currentCard, viewedCards, completedAt: viewedCards >= deck._count.cards ? new Date() : null }, create: { userId: req.user.id, deckId: deck.id, currentCard, viewedCards, completedAt: viewedCards >= deck._count.cards ? new Date() : null } });
+    res.json({ success: true, data });
   } catch (error) { next(error); }
 };
 

@@ -10,7 +10,7 @@ import { courseApi } from "@/api/course.api";
 import { useAuth } from "@/store/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
-const celebrities = ["Virat Kohli", "Salman Khan", "Narendra Modi", "Sachin Tendulkar", "Hardik Pandya"];
+const instructors = ["Aisha Khan", "Rahul Verma", "Meera Iyer", "Arjun Patel", "Neha Sharma"];
 const levels      = ["Beginner", "Intermediate", "Advanced"];
 const categories  = ["Python", "CSS", "MERN Stack", "Data Science", "AI & Machine Learning"];
 
@@ -288,11 +288,11 @@ const ManageCourse = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI Celebrity Teacher</label>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Instructor / Mentor</label>
               <select value={editForm.celebrityTeacher} onChange={(e) => setEditForm((f) => ({ ...f, celebrityTeacher: e.target.value }))}
                 className="w-full bg-muted/40 border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
                 <option value="">None</option>
-                {celebrities.map((c) => <option key={c} value={c}>{c}</option>)}
+                {instructors.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
 

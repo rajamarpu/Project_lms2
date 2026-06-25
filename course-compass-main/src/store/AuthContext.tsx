@@ -12,7 +12,7 @@ interface User {
   certificates?: number;
   streak?: number;
 }
-
+  
 interface AuthContextType {
   user: User | null;
   token: string | null;
@@ -26,25 +26,55 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** Try to read the cached user from localStorage. */
+function readCachedUser(): User | null {
+  try {
+    const raw = localStorage.getItem("lms_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(readCachedUser);
   const [token, setToken] = useState<string | null>(localStorage.getItem("lms_token"));
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const initAuth = async () => {
       const savedToken = localStorage.getItem("lms_token");
-      if (savedToken) {
-        try {
-          const res = await authApi.getMe();
-          setUser(res.data.data);
-          setToken(savedToken);
-        } catch {
-          localStorage.removeItem("lms_token");
-          localStorage.removeItem("lms_user");
-          setToken(null);
-          setUser(null);
+      if (!savedToken) {
+        // No token at all – make sure state is clean
+        setUser(null);
+        setToken(null);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const res = await authApi.getMe();
+        // Token is valid – update user with fresh server data
+        const freshUser = res.data.data as User;
+        setUser(freshUser);
+        setToken(savedToken);
+        localStorage.setItem("lms_user", JSON.stringify(freshUser));
+      } catch (err: unknown) {
+        const isNetworkError =
+          !err || (typeof err === "object" && !(err as { response?: unknown }).response);
+
+        if (isNetworkError) {
+          // Server is temporarily unreachable – keep the cached user and
+          // token so the app stays usable.  The next action will retry.
+          setIsLoading(false);
+          return;
         }
+
+        // Auth failure (401 after failed refresh, etc.) – clear session
+        localStorage.removeItem("lms_token");
+        localStorage.removeItem("lms_user");
+        setToken(null);
+        setUser(null);
       }
       setIsLoading(false);
     };

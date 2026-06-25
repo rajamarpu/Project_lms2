@@ -24,8 +24,8 @@ API.interceptors.response.use(
       original.headers.Authorization = `Bearer ${token}`;
       return API(original);
     } catch (refreshError) {
-      localStorage.removeItem('lms_token');
-      localStorage.removeItem('lms_user');
+      // Let AuthContext handle token cleanup instead of clearing here.
+      // This avoids premature logout on transient network errors.
       return Promise.reject(refreshError);
     }
   }

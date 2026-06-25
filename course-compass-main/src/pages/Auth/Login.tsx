@@ -8,7 +8,7 @@ import { apiErrorMessage } from "@/utils/apiError";
 const benefits = [
   "Resume lessons from your last saved position",
   "Access assignments, assessments, and certificates",
-  "Join community discussions and live sessions",
+  "Join community discussions and course activity",
 ];
 
 export default function Login() {
@@ -54,12 +54,12 @@ export default function Login() {
       </button>
 
       <div className="relative mx-auto grid w-full max-w-6xl overflow-hidden rounded-[2rem] border border-border bg-card shadow-[var(--shadow-card)] lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="hidden min-h-[650px] flex-col justify-between bg-[linear-gradient(145deg,hsl(var(--primary)),hsl(var(--secondary)))] p-10 text-white lg:flex">
+        <section className="brand-auth-panel hidden min-h-[650px] flex-col justify-between p-10 text-white lg:flex">
           <div className="inline-flex w-fit items-center gap-3 rounded-2xl bg-white/14 px-4 py-3 backdrop-blur"><BookOpenCheck className="h-6 w-6" /><span className="font-display text-lg font-semibold">UptoSkills LMS</span></div>
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/75">Your learning workspace</p>
             <h1 className="mt-4 max-w-lg font-display text-4xl font-bold leading-tight">Learn consistently. Track real progress. Build skills that last.</h1>
-            <p className="mt-5 max-w-lg leading-7 text-white/80">One secure account for courses, coursework, live sessions, community support, and verifiable achievements.</p>
+            <p className="mt-5 max-w-lg leading-7 text-white/80">One secure account for courses, coursework, community support, and verifiable achievements.</p>
             <ul className="mt-8 space-y-4">{benefits.map((item) => <li key={item} className="flex items-center gap-3 text-sm text-white/90"><CheckCircle2 className="h-5 w-5 shrink-0" />{item}</li>)}</ul>
           </div>
           <p className="text-xs text-white/65">Protected sessions · Role-based access · Persisted progress</p>

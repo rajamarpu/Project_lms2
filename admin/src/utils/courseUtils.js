@@ -8,6 +8,26 @@ export const TEACHERS_SEED = [
   'Alia Bhatt',
 ];
 
+export const COURSE_CATEGORY_OPTIONS = [
+  'Programming Languages',
+  'Web Development',
+  'Mobile Development',
+  'AI/ML',
+  'DevOps',
+  'DSA',
+  'Design',
+];
+
+export const COURSE_TYPE_OPTIONS = {
+  'Programming Languages': ['C', 'C++', 'Java', 'Python', 'JavaScript', 'TypeScript'],
+  'Web Development': ['Frontend', 'Backend', 'React', 'Next.js', 'Full Stack'],
+  'Mobile Development': ['Android', 'iOS', 'Flutter', 'React Native'],
+  'AI/ML': ['Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision', 'MLOps'],
+  DevOps: ['Cloud', 'Docker', 'Kubernetes', 'CI/CD', 'Automation'],
+  DSA: ['Foundations', 'Algorithms', 'Problem Solving', 'Interview Prep'],
+  Design: ['UI Design', 'UX Research', 'Design Systems', 'Prototyping'],
+};
+
 export const initialCourses = [
   {
     id: 1,
@@ -15,6 +35,7 @@ export const initialCourses = [
     level: 'Intermediate',
     xp: '1500 XP',
     category: 'Web Development',
+    courseType: 'React',
     lessons: 12,
     rating: 4.9,
     students: 1240,
@@ -33,7 +54,8 @@ export const initialCourses = [
     title: 'Python for Machine Learning',
     level: 'Advanced',
     xp: '2500 XP',
-    category: 'AI & ML',
+    category: 'Programming Languages',
+    courseType: 'Python',
     lessons: 24,
     rating: 4.8,
     students: 3420,
@@ -53,6 +75,7 @@ export const initialCourses = [
     level: 'Beginner',
     xp: '1000 XP',
     category: 'Web Development',
+    courseType: 'Full Stack',
     lessons: 15,
     rating: 4.7,
     students: 2100,
@@ -71,7 +94,8 @@ export const initialCourses = [
     title: 'Data Structures in Java',
     level: 'Advanced',
     xp: '3000 XP',
-    category: 'DSA',
+    category: 'Programming Languages',
+    courseType: 'Java',
     lessons: 30,
     rating: 4.9,
     students: 5100,
@@ -91,6 +115,7 @@ export const initialCourses = [
     level: 'Beginner',
     xp: '800 XP',
     category: 'Design',
+    courseType: 'Design Systems',
     lessons: 8,
     rating: 4.6,
     students: 980,
@@ -110,6 +135,7 @@ export const initialCourses = [
     level: 'Intermediate',
     xp: '1800 XP',
     category: 'Web Development',
+    courseType: 'Next.js',
     lessons: 18,
     rating: 4.9,
     students: 1890,
@@ -128,7 +154,8 @@ export const initialCourses = [
     title: 'CSS & Tailwind Mastery',
     level: 'Beginner',
     xp: '900 XP',
-    category: 'Design',
+    category: 'Web Development',
+    courseType: 'Frontend',
     lessons: 10,
     rating: 4.7,
     students: 1560,
@@ -148,6 +175,7 @@ export const initialCourses = [
     level: 'Expert',
     xp: '4000 XP',
     category: 'DevOps',
+    courseType: 'Cloud',
     lessons: 36,
     rating: 4.8,
     students: 720,
@@ -201,6 +229,12 @@ export function normalizeCourse(c, index = 0) {
     rating,
     teacher,
     revenue,
+    category: merged.category || seed.category || 'Programming Languages',
+    courseType:
+      merged.courseType ||
+      seed.courseType ||
+      COURSE_TYPE_OPTIONS[merged.category || seed.category || 'Programming Languages']?.[0] ||
+      '',
     thumbnail: merged.thumbnail ?? merged.avatar ?? null,
     gradient: merged.gradient || seed.gradient,
     icon: merged.icon || seed.icon,
@@ -236,4 +270,15 @@ export function formatStudents(n) {
 
 export function getCategories(courses) {
   return [...new Set(courses.map((c) => c.category).filter(Boolean))];
+}
+
+export function getCourseTypes(courses, categoryFilter = '') {
+  return [
+    ...new Set(
+      courses
+        .filter((c) => !categoryFilter || c.category === categoryFilter)
+        .map((c) => c.courseType)
+        .filter(Boolean)
+    ),
+  ];
 }

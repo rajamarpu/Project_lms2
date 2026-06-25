@@ -11,6 +11,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+let databaseConnected = false;
 
 // Base prisma client
 const basePrisma = new PrismaClient({ 
@@ -30,6 +31,7 @@ const prisma = process.env.DATABASE_URL_REPLICA
 const connectDB = async () => {
   try {
     await basePrisma.$connect();
+    databaseConnected = true;
     logger.info('PostgreSQL Primary Connected via Prisma');
     // Read replicas are connected on-demand by the extension, but we log readiness
     logger.info(`Database Read-Replica Ready: ${!!process.env.DATABASE_URL_REPLICA}`);
@@ -39,4 +41,6 @@ const connectDB = async () => {
   }
 };
 
-module.exports = { connectDB, prisma };
+const isDatabaseConnected = () => databaseConnected;
+
+module.exports = { connectDB, prisma, isDatabaseConnected };

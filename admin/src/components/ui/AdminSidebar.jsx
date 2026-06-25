@@ -48,6 +48,7 @@ const ACCENT = {
   Activity:           { color: '#EC4899', rgb: '236,72,153'  },
   Profile:            { color: '#6366F1', rgb: '99,102,241'  },
   'Feature Hub':      { color: '#A855F7', rgb: '168,85,247'   },
+  'Generate Certificates': { color: '#10B981', rgb: '16,185,129' },
 };
 
 function SidebarTooltip({ label, children, enabled }) {
@@ -113,7 +114,7 @@ const AdminSidebar = () => {
     { name: 'Courses',             path: '/dashboard/admin/courses',      icon: LuBookOpen },
     { name: 'Analytics',           path: '/dashboard/admin/analytics',    icon: LuChartBar },
     { name: 'Feature Hub',         path: '/dashboard/admin/feature-hub',  icon: LuSparkles },
-    { name: 'Certificates',        path: '/dashboard/admin/certificates', icon: LuBadgeCheck },
+    { name: 'Generate Certificates', path: '/dashboard/admin/certificates', icon: LuBadgeCheck },
     { name: 'Assignments',         path: '/dashboard/admin/assignments',  icon: LuClipboardCheck },
     { name: 'Assessments',         path: '/dashboard/admin/assessments',  icon: LuPencilRuler },
     { name: 'Reviews & Ratings',   path: '/dashboard/admin/reviews',      icon: LuMessageSquare },

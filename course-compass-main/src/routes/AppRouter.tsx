@@ -28,7 +28,7 @@ const VerifyCertificate = lazy(() => import("@/pages/Certificate/VerifyCertifica
 const infoPage = (name: string) => lazy(() => import("@/pages/InfoPages").then((module) => ({ default: module[name as keyof typeof module] as ComponentType })));
 const featurePage = (name: string) => lazy(() => import("@/pages/FeaturePages").then((module) => ({ default: module[name as keyof typeof module] as ComponentType })));
 const Features = infoPage('Features'); const Notifications = infoPage('Notifications'); const Settings = infoPage('Settings'); const Support = infoPage('Support');
-const AITutors = featurePage('AITutors'); const Community = featurePage('Community'); const CommunityTopic = featurePage('CommunityTopic'); const LiveSessions = featurePage('LiveSessions'); const QuestionPractice = featurePage('QuestionPractice');
+const AITutors = featurePage('AITutors'); const Community = featurePage('Community'); const CommunityTopic = featurePage('CommunityTopic');
 
 const RouteLoader = () => <div className="container grid min-h-[55vh] place-items-center" role="status" aria-live="polite"><div className="w-full max-w-4xl space-y-4"><div className="skeleton-block h-9 w-52" /><div className="skeleton-block h-24 w-full" /><div className="grid gap-4 md:grid-cols-3"><div className="skeleton-block h-56" /><div className="skeleton-block h-56" /><div className="skeleton-block h-56" /></div><span className="sr-only">Loading page</span></div></div>;
 
@@ -48,12 +48,12 @@ export const AppRouter = () => {
             <Route path="/courses/:id" element={<CourseDetails />} />
             <Route path="/features" element={<Features />} />
             <Route path="/support" element={<Support />} />
-            <Route path="/learning-paths" element={<LearningPaths />} />
-            <Route path="/learning-paths/:id" element={<LearningPathDetails />} />
             <Route path="/verify/:verificationId" element={<VerifyCertificate />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/learn/:id" element={<CoursePlayer />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/learning-paths" element={<LearningPaths />} />
+              <Route path="/learning-paths/:id" element={<LearningPathDetails />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/settings" element={<Settings />} />
@@ -63,9 +63,7 @@ export const AppRouter = () => {
               <Route path="/courses/:courseId/work" element={<LearningWork />} />
               <Route path="/community" element={<Community />} />
               <Route path="/community/:topicId" element={<CommunityTopic />} />
-              <Route path="/live-sessions" element={<LiveSessions />} />
               <Route path="/ai-tutors" element={<AITutors />} />
-              <Route path="/questions" element={<QuestionPractice />} />
             </Route>
             <Route element={<ProtectedRoute roles={["admin", "instructor"]} />}>
               <Route path="/courses/new" element={<CreateCourse />} />

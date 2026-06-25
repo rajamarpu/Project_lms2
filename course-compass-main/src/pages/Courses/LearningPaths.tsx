@@ -1,10 +1,17 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Clock, ArrowRight, Layers, CheckCircle2, RefreshCw } from "lucide-react";
+import { ArrowRight, BadgeCheck, Clock, Layers, RefreshCw, Sparkles, Target } from "lucide-react";
 import { courseApi } from "@/api/course.api";
 
 type PathCourse = { id: string; title: string; duration?: string; level?: string };
 type LearningPath = { id: string; slug?: string; title: string; description: string; duration?: string; color?: string; courses?: PathCourse[] };
+
+const palette = {
+  blue: "from-cyan-500/15 to-blue-500/5",
+  orange: "from-orange-500/15 to-amber-500/5",
+  teal: "from-emerald-500/15 to-teal-500/5",
+  violet: "from-violet-500/15 to-fuchsia-500/5",
+};
 
 const LearningPaths = () => {
   const [paths, setPaths] = useState<LearningPath[]>([]);
@@ -29,81 +36,133 @@ const LearningPaths = () => {
 
   return (
     <div className="container py-10 min-h-[calc(100vh-80px)]">
-      <div className="max-w-2xl mb-12">
-        <h1 className="font-display font-bold text-3xl md:text-4xl mb-3">Learning Paths</h1>
-        <p className="text-muted-foreground">Structured journeys curated by experts. Follow a path to master a role from beginner to job-ready.</p>
-      </div>
+      <section className="relative overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-card via-card to-secondary/5 p-6 md:p-8">
+        <div className="absolute right-0 top-0 h-44 w-44 rounded-full bg-primary/10 blur-3xl" aria-hidden />
+        <div className="absolute bottom-0 left-0 h-44 w-44 rounded-full bg-secondary/10 blur-3xl" aria-hidden />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-background/90 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary shadow-sm">
+              <Sparkles className="h-4 w-4" />
+              Learning paths
+            </div>
+            <h1 className="mt-5 font-display text-3xl font-bold tracking-tight md:text-5xl">
+              Structured journeys from foundation to job-ready skill.
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+              Each path groups the right courses into a clear route so learners can focus on outcomes instead of guessing what to study next.
+            </p>
+          </div>
+          <Link to="/courses" className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted/50">
+            Explore courses
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {[
+            { value: `${paths.length}`, label: "Available paths", icon: Layers },
+            { value: `${paths.reduce((sum, path) => sum + (path.courses?.length || 0), 0)}`, label: "Courses mapped", icon: Target },
+            { value: "Guided", label: "Learning style", icon: BadgeCheck },
+          ].map(({ value, label, icon: Icon }) => (
+            <div key={label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <Icon className="h-5 w-5 text-primary" />
+              <p className="mt-4 text-2xl font-extrabold text-foreground">{value}</p>
+              <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {isLoading ? (
         <div className="flex justify-center p-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
         </div>
       ) : error ? (
-        <div className="surface-card p-12 text-center" role="alert"><p>{error}</p><button type="button" className="btn-primary mt-5" onClick={() => { setError(""); setIsLoading(true); setReloadKey((value) => value + 1); }}><RefreshCw className="h-4 w-4" />Retry</button></div>
+        <div className="surface-card mt-8 p-12 text-center" role="alert">
+          <p>{error}</p>
+          <button
+            type="button"
+            className="btn-primary mt-5"
+            onClick={() => {
+              setError("");
+              setIsLoading(true);
+              setReloadKey((value) => value + 1);
+            }}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Retry
+          </button>
+        </div>
       ) : paths.length === 0 ? (
-        <div className="p-16 text-center border border-border/50 rounded-2xl bg-card/30 backdrop-blur-sm">
-          <p className="text-muted-foreground mb-6 text-lg">No learning paths are available yet. Explore individual courses while new journeys are prepared.</p>
-          <Link to="/courses" className="btn-primary">Explore courses</Link>
+        <div className="mt-8 rounded-2xl border border-border/50 bg-card/30 p-16 text-center backdrop-blur-sm">
+          <p className="mb-6 text-lg text-muted-foreground">
+            No learning paths are available yet. Explore individual courses while new journeys are prepared.
+          </p>
+          <Link to="/courses" className="btn-primary">
+            Explore courses
+          </Link>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className="mt-10 grid gap-8 lg:grid-cols-2">
           {paths.map((path, idx) => {
             const isOrange = path.color === "orange";
+            const tone = palette[path.color as keyof typeof palette] || palette.violet;
+
             return (
-              <div
+              <article
                 key={path.id}
-                className="glass-card p-8 md:p-10 opacity-0 animate-fade-in hover:border-secondary transition-all flex flex-col"
-                style={{ animationDelay: `${idx * 120}ms`, animationFillMode: "forwards" }}
+                className={`surface-card bg-gradient-to-br ${tone} flex flex-col p-7 md:p-8 transition hover:-translate-y-1 hover:border-primary/30`}
+                style={{ animationDelay: `${idx * 90}ms` }}
               >
-                <div className="flex items-start justify-between mb-5">
+                <div className="mb-5 flex items-start justify-between">
                   <div>
-                    <span className={`text-xs font-mono px-2.5 py-1 rounded-md border ${isOrange ? "bg-primary/15 text-primary border-primary/40" : "bg-secondary/15 text-secondary border-secondary/40"}`}>
-                      PATH
+                    <span className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] ${isOrange ? "border-primary/30 bg-primary/10 text-primary" : "border-secondary/30 bg-secondary/10 text-secondary"}`}>
+                      Path roadmap
                     </span>
-                    <h2 className="font-display font-bold text-2xl mt-3">{path.title}</h2>
+                    <h2 className="mt-3 text-2xl font-bold">{path.title}</h2>
                   </div>
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${isOrange ? "bg-primary/15 text-primary" : "bg-secondary/15 text-secondary"}`}>
-                    <Layers className="w-7 h-7" />
+                  <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${isOrange ? "bg-primary/10 text-primary" : "bg-secondary/10 text-secondary"}`}>
+                    <Layers className="h-7 w-7" />
                   </div>
                 </div>
 
-                <p className="text-sm text-muted-foreground mb-5">{path.description}</p>
+                <p className="text-sm leading-6 text-muted-foreground">{path.description}</p>
 
-                <div className="flex gap-6 text-sm text-muted-foreground mb-10">
-                  <span className="flex items-center gap-2"><Clock className="w-4 h-4 text-foreground" /> {path.duration}</span>
-                  <span className="flex items-center gap-2"><Layers className="w-4 h-4 text-foreground" /> {path.courses?.length || 0} courses</span>
+                <div className="mt-5 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-foreground" />
+                    {path.duration || "Self-paced"}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-foreground" />
+                    {path.courses?.length || 0} courses
+                  </span>
                 </div>
 
-                {/* Node flow */}
-                <div className="space-y-2 mb-10 flex-1">
+                <div className="mt-8 space-y-3 flex-1">
                   {path.courses?.map((c, i) => (
-                    <div key={c.id} className="flex gap-4">
+                    <div key={c.id} className="flex gap-4 rounded-2xl border border-border bg-card/80 p-4">
                       <div className="flex flex-col items-center">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
-                          i === 0 ? (isOrange ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-secondary-foreground border-secondary")
-                                  : "bg-card border-border text-muted-foreground"
-                        }`}>
-                          {i === 0 ? <CheckCircle2 className="w-5 h-5" /> : i + 1}
+                        <div className={`grid h-10 w-10 place-items-center rounded-full border-2 text-sm font-bold ${i === 0 ? (isOrange ? "border-primary bg-primary text-primary-foreground" : "border-secondary bg-secondary text-secondary-foreground") : "border-border bg-background text-muted-foreground"}`}>
+                          {i === 0 ? <BadgeCheck className="h-5 w-5" /> : i + 1}
                         </div>
-                        {i < path.courses.length - 1 && (
-                          <div className={`w-0.5 flex-1 my-2 ${isOrange ? "bg-gradient-to-b from-primary/60 to-border" : "bg-gradient-to-b from-secondary/60 to-border"}`} style={{ minHeight: "36px" }} />
+                        {i < (path.courses?.length || 0) - 1 && (
+                          <div className={`my-2 w-0.5 flex-1 min-h-[34px] ${isOrange ? "bg-gradient-to-b from-primary/60 to-border" : "bg-gradient-to-b from-secondary/60 to-border"}`} />
                         )}
                       </div>
-                      <Link to={`/learn/${c.id}`} className="flex-1 pb-6 group pt-1">
-                        <p className="font-semibold text-base group-hover:text-primary transition-colors">{c.title}</p>
-                        <p className="text-sm text-muted-foreground mt-1.5">{c.duration || "4h 30m"} • {c.level || "Beginner"}</p>
+                      <Link to={`/learn/${c.id}`} className="flex-1 pb-4 pt-1">
+                        <p className="font-semibold transition-colors group-hover:text-primary">{c.title}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{c.duration || "4h 30m"} · {c.level || "Beginner"}</p>
                       </Link>
                     </div>
                   ))}
                 </div>
 
-                <Link 
-                  to={`/learning-paths/${path.id}`}
-                  className="inline-flex justify-center items-center gap-2 py-3.5 mt-auto btn-primary w-full"
-                >
-                  View Full Roadmap <ArrowRight className="w-4 h-4" />
+                <Link to={`/learning-paths/${path.id}`} className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:bg-primary/90">
+                  View full roadmap
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
-              </div>
+              </article>
             );
           })}
         </div>

@@ -1,8 +1,18 @@
-import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, Star, Clock, BookOpen, Users, Award, CheckCircle2, PlayCircle,
-  Heart, HeartOff, Loader2
+  ArrowLeft,
+  Award,
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  Heart,
+  HeartOff,
+  Loader2,
+  PlayCircle,
+  ShieldCheck,
+  Star,
+  Users,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -15,180 +25,158 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { courseApi } from "@/api/course.api";
+import { platformApi } from "@/api/platform.api";
 import { useAuth } from "@/store/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { platformApi } from "@/api/platform.api";
-import axios from "axios";
+import { apiErrorMessage } from "@/utils/apiError";
 
-const tabs = ["About", "Outcomes", "Curriculum", "Instructors", "Reviews"] as const;
-type Tab = typeof tabs[number];
-type Lesson = { id: string; title: string; content?: string; order: number };
-type Enrollment = { courseId: string; mentor?: string };
+type Lesson = { id: string; title: string; content?: string; order: number; videoUrl?: string };
 type CourseDetail = {
-  id: string; title: string; description: string; category: string; level: string; thumbnail?: string;
-  rating: number; duration?: string; price: number; outcomes: string[]; lessons: Lesson[];
-  celebrityTeacher?: string; instructor?: { name: string }; instructors?: Array<{ name: string; role: string; avatar: string }>;
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  level: string;
+  thumbnail?: string;
+  rating: number;
+  duration?: string;
+  price: number;
+  outcomes: string[];
+  lessons: Lesson[];
+  celebrityTeacher?: string;
+  instructor?: { name: string };
+  instructors?: Array<{ name: string; role: string; avatar: string }>;
   _count?: { enrollments: number };
 };
 type Review = { id: string; rating: number; comment?: string; createdAt: string; user: { name: string; avatar?: string } };
+type Enrollment = { courseId: string; mentor?: string };
 
-// ---------------------------------------------------------------------------
-// Wishlist helpers (localStorage)
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
+const tabs = ["About", "Outcomes", "Curriculum", "Instructors", "Reviews"] as const;
+type Tab = (typeof tabs)[number];
 
-const CourseDetails = () => {
+const mentors = ["Aisha Khan", "Rahul Verma", "Meera Iyer", "Arjun Patel", "Neha Sharma", "Virtual Mentor"];
+
+export default function CourseDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
-  const isInstructorOrAdmin = user?.role === "admin";
   const { toast } = useToast();
+  const isStaff = user?.role === "admin" || user?.role === "instructor";
 
   const [course, setCourse] = useState<CourseDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [tab, setTab] = useState<Tab>("About");
-
-  // Enroll state
-  const [isEnrolled, setIsEnrolled] = useState(false);
-  const [enrollLoading, setEnrollLoading] = useState(false);
-  
-  // Mentor Selection State
-  const [mentorSelectionOpen, setMentorSelectionOpen] = useState(false);
-  const [selectedMentor, setSelectedMentor] = useState("");
-  const celebrities = ["Virat Kohli", "Salman Khan", "Narendra Modi", "Sachin Tendulkar", "Hardik Pandya", "Virtual Mentor"];
-
-  // Wishlist state
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>("About");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [enrolled, setEnrolled] = useState(false);
+  const [enrollLoading, setEnrollLoading] = useState(false);
+  const [wishLoading, setWishLoading] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [mentorOpen, setMentorOpen] = useState(false);
+  const [selectedMentor, setSelectedMentor] = useState("");
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
 
-  // -------------------------------------------------------------------------
-  // Fetch course
-  // -------------------------------------------------------------------------
   useEffect(() => {
-    const fetchCourse = async () => {
+    let active = true;
+    const load = async () => {
       try {
-        const res = await courseApi.getCourseById(id!);
-        setCourse(res.data.data);
-      } catch (err) {
-        setError(true);
+        const [courseResponse, reviewResponse] = await Promise.all([
+          courseApi.getCourseById(id!),
+          platformApi.reviews(id!),
+        ]);
+        if (!active) return;
+        setCourse(courseResponse.data.data);
+        setReviews(reviewResponse.data.data || []);
+      } catch {
+        if (active) setError(true);
       } finally {
-        setIsLoading(false);
+        if (active) setLoading(false);
       }
     };
 
-    if (id) fetchCourse();
+    if (id) void load();
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  useEffect(() => { if (id) platformApi.reviews(id).then(({ data }) => setReviews(data.data)).catch(() => {}); }, [id]);
-
-  // -------------------------------------------------------------------------
-  // Check enrollment & wishlist status once course + auth are ready
-  // -------------------------------------------------------------------------
   useEffect(() => {
-    if (!id) return;
+    if (!id || !isAuthenticated) return;
+    let active = true;
+    courseApi
+      .getMyEnrollments()
+      .then((response) => {
+        if (!active) return;
+        const enrollment = (response.data.data || []).find((item: Enrollment) => item.courseId === id);
+        setEnrolled(Boolean(enrollment));
+      })
+      .catch(() => {});
 
-    // Enrollment (backend)
-    if (isAuthenticated) {
-      platformApi.bookmarks().then(({ data }) => setIsWishlisted(data.data.some((bookmark: { courseId: string }) => bookmark.courseId === id))).catch(() => {});
-      courseApi
-        .getMyEnrollments()
-        .then((res) => {
-          const enrollment = res.data.data?.find((e: Enrollment) => e.courseId === id);
-          if (enrollment) {
-            setIsEnrolled(true);
-            if (enrollment.mentor) {
-               setCourse((prev) => prev ? ({
-                  ...prev,
-                  instructors: [{
-                    name: enrollment.mentor,
-                    role: "Lead Instructor",
-                    avatar: "https://ui-avatars.com/api/?name=" + enrollment.mentor
-                  }]
-               }) : prev);
-            }
-          }
-        })
-        .catch(() => {});
-    }
+    platformApi
+      .bookmarks()
+      .then(({ data }) => {
+        if (!active) return;
+        setIsWishlisted((data.data || []).some((bookmark: { courseId: string }) => String(bookmark.courseId) === String(id)));
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
   }, [id, isAuthenticated]);
 
-  // -------------------------------------------------------------------------
-  // Enroll handler
-  // -------------------------------------------------------------------------
-  const handleEnrollClick = () => {
+  const stats = useMemo(
+    () => [
+      { icon: Star, label: "Rating", value: course?.rating ? course.rating.toFixed(1) : "4.9" },
+      { icon: Users, label: "Learners", value: course?._count?.enrollments ?? 0 },
+      { icon: Clock, label: "Duration", value: course?.duration || "Self-paced" },
+      { icon: BookOpen, label: "Lessons", value: Array.isArray(course?.lessons) ? course.lessons.length : 0 },
+    ],
+    [course],
+  );
+
+  const handleEnroll = async () => {
+    if (!id || !course) return;
     if (!isAuthenticated) {
-      toast({
-        title: "Login required",
-        description: "Please log in to enroll in this course.",
-        variant: "destructive",
-      });
-      navigate("/login");
+      toast({ title: "Login required", description: "Sign in to enroll in this course.", variant: "destructive" });
+      navigate("/login", { state: { from: `/courses/${id}` } });
       return;
     }
 
-    if (isEnrolled) {
+    if (isStaff) {
+      toast({ title: "Instructor access", description: "Instructors and admins manage content from the portal." });
+      return;
+    }
+
+    if (enrolled) {
       navigate(`/learn/${id}`);
       return;
     }
 
-    setMentorSelectionOpen(true);
+    setMentorOpen(true);
   };
 
-  const proceedAfterMentorSelection = () => {
-    setMentorSelectionOpen(false);
+  const confirmEnroll = async () => {
+    if (!id || !course) return;
     if (course.price && course.price > 0) {
-      toast({ title: "Purchase unavailable", description: "Paid enrollment is disabled until a verified payment provider is configured.", variant: "destructive" });
+      toast({
+        title: "Paid enrollment not configured",
+        description: "This course is currently free-only in the learner portal.",
+        variant: "destructive",
+      });
       return;
     }
-    handleEnroll();
-  };
-
-  const handleEnroll = async () => {
 
     setEnrollLoading(true);
     try {
-      await courseApi.enrollInCourse(id!, { mentor: selectedMentor });
-      setIsEnrolled(true);
-      if (selectedMentor) {
-        setCourse((prev) => prev ? ({
-            ...prev,
-            instructors: [{
-              name: selectedMentor,
-              role: "Lead Instructor",
-              avatar: "https://ui-avatars.com/api/?name=" + selectedMentor
-            }]
-        }) : prev);
-      }
-      toast({
-        title: "Enrolled successfully! 🎉",
-        description: "You are now enrolled. Head to your dashboard to start learning.",
-      });
-    } catch (err: unknown) {
-      const msg =
-        (axios.isAxiosError(err) && err.response?.data?.error) || "Failed to enroll. Please try again.";
-      toast({ title: "Enrollment failed", description: msg, variant: "destructive" });
-    } finally {
-      setEnrollLoading(false);
-    }
-  };
-
-  const handleUnenroll = async () => {
-    try {
-      setEnrollLoading(true);
-      await courseApi.unenrollFromCourse(id!);
-      toast({
-        title: "Unenrolled",
-        description: "You have been removed from this course.",
-      });
-      setIsEnrolled(false);
-      navigate("/dashboard");
+      await courseApi.enrollInCourse(id, { mentor: selectedMentor });
+      setEnrolled(true);
+      toast({ title: "Enrolled successfully", description: "You can now continue learning from your dashboard." });
+      setMentorOpen(false);
     } catch (err) {
       toast({
-        title: "Action failed",
-        description: "Could not unenroll from the course.",
+        title: "Enrollment failed",
+        description: apiErrorMessage(err, "Please try again."),
         variant: "destructive",
       });
     } finally {
@@ -196,327 +184,350 @@ const CourseDetails = () => {
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Wishlist handler
-  // -------------------------------------------------------------------------
   const handleWishlist = async () => {
+    if (!id) return;
     if (!isAuthenticated) {
-      toast({
-        title: "Login required",
-        description: "Please log in to save courses to your wishlist.",
-        variant: "destructive",
-      });
-      navigate("/login");
+      toast({ title: "Login required", description: "Sign in to save courses to your wishlist.", variant: "destructive" });
+      navigate("/login", { state: { from: `/courses/${id}` } });
       return;
     }
 
-    setWishlistLoading(true);
+    setWishLoading(true);
     try {
-      const { data } = await platformApi.toggleBookmark(id!);
-      setIsWishlisted(data.data.bookmarked);
-      toast({ title: data.data.bookmarked ? "Added to Wishlist" : "Removed from Wishlist" });
-    } catch {
-      toast({ title: "Wishlist update failed", description: "Please try again.", variant: "destructive" });
+      const { data } = await platformApi.toggleBookmark(id);
+      setIsWishlisted(Boolean(data.data?.bookmarked));
+      toast({ title: data.data?.bookmarked ? "Added to saved courses" : "Removed from saved courses" });
+    } catch (err) {
+      toast({ title: "Wishlist update failed", description: apiErrorMessage(err, "Please try again."), variant: "destructive" });
     } finally {
-      setWishlistLoading(false);
+      setWishLoading(false);
     }
   };
 
   const submitReview = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!id) return;
     try {
-      await platformApi.submitReview(id!, reviewForm);
-      const { data } = await platformApi.reviews(id!);
-      setReviews(data.data);
+      await platformApi.submitReview(id, reviewForm);
+      const { data } = await platformApi.reviews(id);
+      setReviews(data.data || []);
       setReviewForm({ rating: 5, comment: "" });
       toast({ title: "Review saved" });
-    } catch (error) {
-      toast({ title: "Review unavailable", description: "Only enrolled learners can review this course.", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "Review unavailable",
+        description: apiErrorMessage(err, "Only enrolled learners can review this course."),
+        variant: "destructive",
+      });
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
-  if (isLoading)
+  if (loading) {
     return (
-      <div className="p-20 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+      <div className="container grid min-h-[55vh] place-items-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
-  if (error || !course) return <Navigate to="/courses" replace />;
+  }
+
+  if (error || !course) {
+    return <Navigate to="/courses" replace />;
+  }
 
   return (
-    <div>
-      {/* Hero */}
-      <div className="relative overflow-hidden border-b border-border">
-        <div className="absolute inset-0">
-          <img
-            src={course.thumbnail}
-            alt=""
-            className="w-full h-full object-cover opacity-20 blur-2xl"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
-        </div>
-        <div className="container relative py-10">
-          <Link
-            to="/courses"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to courses
-          </Link>
+    <div className="page-shell">
+      <section className="portal-hero relative overflow-hidden rounded-[2rem] border border-border p-6 shadow-[var(--shadow-overlay)] md:p-8">
+        <div className="absolute inset-0 opacity-90" aria-hidden />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <Link to="/courses" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary">
+              <ArrowLeft className="h-4 w-4" />
+              Back to courses
+            </Link>
 
-          <div className="grid lg:grid-cols-[1fr_400px] gap-10 items-start">
-            <div>
-              <span className="inline-block text-xs font-mono px-2.5 py-1 rounded-md bg-secondary/20 text-secondary border border-secondary/40 mb-4">
-                {course.category} · {course.level}
-              </span>
-              <h1 className="font-display font-bold text-3xl md:text-5xl mb-4">
-                {course.title}
-              </h1>
-              <p className="text-lg text-muted-foreground mb-6">
-                {course.description}
-              </p>
-
-              <div className="flex flex-wrap gap-4 text-sm">
-                <span className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-primary fill-primary" /> {course.rating} rating
-                </span>
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Users className="w-4 h-4" /> {course._count?.enrollments || 0} enrolled
-                </span>
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Clock className="w-4 h-4" /> {course.duration || 'Self-paced'}
-                </span>
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <BookOpen className="w-4 h-4" /> {Array.isArray(course.lessons) ? course.lessons.length : course.lessons || 0} lessons
-                </span>
-              </div>
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/70 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+              <ShieldCheck className="h-4 w-4" />
+              {course.category} · {course.level}
             </div>
 
-            {/* ---- Enrollment Card ---- */}
-            <div className="glass-card overflow-hidden lg:sticky lg:top-20">
-              <div className="relative aspect-video">
-                <img
-                  src={course.thumbnail}
-                  alt={course.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-background/30">
-                  <PlayCircle className="w-16 h-16 text-primary drop-shadow-lg" />
+            <h1 className="brand-heading mt-5 text-4xl font-extrabold tracking-tight md:text-6xl">{course.title}</h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 brand-body md:text-base">{course.description}</p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              {stats.map(({ icon: Icon, label, value }) => (
+                <div key={label} className="rounded-2xl border border-border bg-card/85 px-4 py-3 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-primary" />
+                    <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</span>
+                  </div>
+                  <p className="mt-1 text-lg font-extrabold text-foreground">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3 lg:justify-end">
+            <button type="button" onClick={handleEnroll} className="btn-primary">
+              {enrolled ? "Continue learning" : "Enroll now"}
+            </button>
+            <button
+              type="button"
+              onClick={handleWishlist}
+              disabled={wishLoading}
+              className="btn-outline-teal"
+            >
+              {wishLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isWishlisted ? (
+                <HeartOff className="h-4 w-4" />
+              ) : (
+                <Heart className="h-4 w-4" />
+              )}
+              {isWishlisted ? "Saved" : "Save course"}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+        <section className="space-y-6">
+          <div className="surface-card">
+            <div className="flex flex-wrap items-center gap-3 border-b border-border pb-4">
+              {tabs.map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    activeTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="pt-6">
+              {activeTab === "About" && (
+                <div className="space-y-4">
+                  <p className="text-sm leading-6 brand-body">
+                    This course is structured for real delivery: clear lessons, guided learning flow, assessment-ready outcomes, and a completion path that feels like a genuine LMS.
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {(course.outcomes || []).slice(0, 4).map((outcome) => (
+                      <div key={outcome} className="flex items-start gap-3 rounded-2xl border border-border bg-muted/20 p-4">
+                        <CheckCircle2 className="mt-0.5 h-5 w-5 text-secondary" />
+                        <p className="text-sm leading-6">{outcome}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "Outcomes" && (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {(course.outcomes || []).map((outcome) => (
+                    <div key={outcome} className="rounded-2xl border border-border bg-card p-4">
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                      <p className="mt-3 text-sm leading-6">{outcome}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {activeTab === "Curriculum" && (
+                <div className="space-y-3">
+                  {(course.lessons || []).map((lesson, index) => (
+                    <article key={lesson.id} className="flex items-start gap-4 rounded-2xl border border-border bg-card p-4">
+                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/10 font-bold text-primary">
+                        {index + 1}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold">{lesson.title}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">{lesson.content || "Lesson content is available after enrollment."}</p>
+                      </div>
+                      <PlayCircle className="h-5 w-5 shrink-0 text-primary/70" />
+                    </article>
+                  ))}
+                  {(!course.lessons || course.lessons.length === 0) && (
+                    <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                      Curriculum will appear once the course is published with lessons.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {activeTab === "Instructors" && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {(course.instructors?.length ? course.instructors : course.instructor ? [
+                    { name: course.instructor.name, role: "Lead Instructor", avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(course.instructor.name)}&background=10b9a8&color=fff&bold=true` },
+                  ] : []).map((instructor) => (
+                    <article key={instructor.name} className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4">
+                      <img
+                        src={instructor.avatar}
+                        alt={instructor.name}
+                        className="h-14 w-14 rounded-2xl object-cover"
+                      />
+                      <div>
+                        <h3 className="font-semibold">{instructor.name}</h3>
+                        <p className="text-sm text-muted-foreground">{instructor.role}</p>
+                      </div>
+                    </article>
+                  ))}
+                  {!course.instructor && !course.instructors?.length && (
+                    <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                      Instructor details are not yet configured for this course.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {activeTab === "Reviews" && (
+                <div className="space-y-5">
+                  {isAuthenticated && enrolled && !isStaff && (
+                    <form onSubmit={submitReview} className="rounded-2xl border border-border bg-card p-5">
+                      <h3 className="font-semibold">Share your review</h3>
+                      <label className="mt-4 block text-sm font-medium">
+                        Rating
+                        <select
+                          className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3"
+                          value={reviewForm.rating}
+                          onChange={(event) => setReviewForm({ ...reviewForm, rating: Number(event.target.value) })}
+                        >
+                          {[5, 4, 3, 2, 1].map((rating) => (
+                            <option key={rating} value={rating}>
+                              {rating} stars
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="mt-4 block text-sm font-medium">
+                        Comment
+                        <textarea
+                          className="mt-2 min-h-28 w-full rounded-xl border border-border bg-background p-3"
+                          value={reviewForm.comment}
+                          onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })}
+                        />
+                      </label>
+                      <button type="submit" className="btn-primary mt-4">
+                        Save review
+                      </button>
+                    </form>
+                  )}
+
+                  <div className="space-y-3">
+                    {reviews.length ? (
+                      reviews.map((review) => (
+                        <article key={review.id} className="rounded-2xl border border-border bg-card p-5">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="font-semibold">{review.user.name}</p>
+                              <p className="text-xs text-muted-foreground">{new Date(review.createdAt).toLocaleDateString()}</p>
+                            </div>
+                            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                              {review.rating}/5
+                            </span>
+                          </div>
+                          {review.comment && <p className="mt-3 text-sm leading-6 text-muted-foreground">{review.comment}</p>}
+                        </article>
+                      ))
+                    ) : (
+                      <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                        No reviews yet.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+          <div className="surface-card overflow-hidden p-0">
+            <div className="relative aspect-[16/10] bg-muted">
+              <img src={course.thumbnail || "https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&q=80"} alt={course.title} className="h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Enrollment</p>
+                  <p className="mt-1 text-2xl font-extrabold text-foreground">{course.price > 0 ? `₹${course.price.toFixed(2)}` : "Free"}</p>
+                </div>
+                <Award className="h-8 w-8 text-primary" />
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-border bg-muted/20 p-4">
+                <div className="flex items-center gap-3 text-sm">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span>{course._count?.enrollments || 0} learners enrolled</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <CheckCircle2 className="h-4 w-4 text-secondary" />
+                  <span>Certificate of completion included</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span>Self-paced with progress tracking</span>
                 </div>
               </div>
-              <div className="p-6">
-                <p className="text-3xl font-display font-bold mb-4">
-                  {course.price && course.price > 0 ? `$${course.price.toFixed(2)}` : "Free"}
-                  {course.price && course.price > 0 && (
-                    <span className="text-sm text-muted-foreground line-through font-normal ml-2">
-                      ${(course.price * 1.5).toFixed(2)}
-                    </span>
-                  )}
-                  {!course.price && (
-                    <span className="text-sm text-muted-foreground line-through font-normal ml-2">
-                      $49.99
-                    </span>
-                  )}
-                </p>
 
-                {/* Show enroll/wishlist only for students (role === 'user' or not logged in) */}
-                {isInstructorOrAdmin ? (
-                  <div className="rounded-lg border border-secondary/30 bg-secondary/10 px-4 py-3 text-sm text-secondary text-center mb-4">
-                    {user?.role === "admin"
-                      ? "You are an admin. Enroll options are for students only."
-                      : "Admins cannot enroll in courses."}
-                  </div>
-                ) : (
-                  <>
-                    {/* Enroll Button */}
-                    <button
-                      id="enroll-btn"
-                      className="btn-primary w-full mb-3 flex items-center justify-center gap-2 disabled:opacity-60"
-                      onClick={handleEnrollClick}
-                      disabled={enrollLoading}
-                    >
-                      {enrollLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : isEnrolled ? (
-                        <>
-                          <PlayCircle className="w-4 h-4" /> Go to Course Player
-                        </>
-                      ) : (
-                        "Enroll Now"
-                      )}
-                    </button>
-
-                    {isEnrolled && (
-                      <button
-                        onClick={handleUnenroll}
-                        disabled={enrollLoading}
-                        className="w-full py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors flex items-center justify-center gap-2 mb-3 border border-transparent hover:border-destructive/20"
-                      >
-                        Drop Course
-                      </button>
-                    )}
-
-                    {/* Wishlist Button */}
-                    <button
-                      id="wishlist-btn"
-                      className="btn-outline-teal w-full flex items-center justify-center gap-2 disabled:opacity-60"
-                      onClick={handleWishlist}
-                      disabled={wishlistLoading}
-                    >
-                      {wishlistLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : isWishlisted ? (
-                        <>
-                          <HeartOff className="w-4 h-4" /> Remove from Wishlist
-                        </>
-                      ) : (
-                        <>
-                          <Heart className="w-4 h-4" /> Add to Wishlist
-                        </>
-                      )}
-                    </button>
-
-                    {/* Mentor Selection Modal */}
-                    <AlertDialog open={mentorSelectionOpen} onOpenChange={setMentorSelectionOpen}>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Choose Your AI Mentor</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Select the celebrity you want as your AI teacher for this course.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <div className="py-4">
-                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Preferred Mentor</label>
-                          <select
-                            value={selectedMentor}
-                            onChange={(e) => setSelectedMentor(e.target.value)}
-                            className="w-full bg-muted/30 border border-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-                          >
-                            <option value="">Select a Mentor</option>
-                            {celebrities.map((c) => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                        </div>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={proceedAfterMentorSelection}
-                            className="btn-primary"
-                            disabled={!selectedMentor}
-                          >
-                            Continue
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-
-                  </>
-                )}
-
-                <ul className="mt-6 space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-secondary" /> Certificate of completion
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-secondary" /> Lifetime access
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-secondary" /> Community support
-                  </li>
-                </ul>
-              </div>
+              {isStaff ? (
+                <div className="rounded-2xl border border-secondary/20 bg-secondary/10 p-4 text-sm text-secondary">
+                  Staff members can manage this course from the portal and still inspect the learner experience here.
+                </div>
+              ) : (
+                <button type="button" onClick={handleEnroll} className="btn-primary w-full">
+                  {enrolled ? "Open course player" : "Start learning"}
+                </button>
+              )}
             </div>
           </div>
-        </div>
+
+          <div className="surface-card">
+            <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-muted-foreground">Included in this course</h2>
+            <ul className="mt-4 space-y-3 text-sm">
+              <li className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-secondary" />Progress tracking across lessons</li>
+              <li className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-secondary" />Assignments and assessments</li>
+              <li className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-secondary" />Certificate verification flow</li>
+              <li className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-secondary" />Saved courses and reminders</li>
+            </ul>
+          </div>
+        </aside>
       </div>
 
-      {/* Tabs */}
-      <div className="container py-10">
-        <div className="lg:max-w-3xl">
-          <div className="flex gap-1 border-b border-border mb-8 overflow-x-auto">
-            {tabs.filter(t => isEnrolled || t !== "Instructors").map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  tab === t
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
+      <AlertDialog open={mentorOpen} onOpenChange={setMentorOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Choose your mentor</AlertDialogTitle>
+            <AlertDialogDescription>
+              Select a mentor to personalize the learning experience for this course.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <select
+              value={selectedMentor}
+              onChange={(event) => setSelectedMentor(event.target.value)}
+              className="h-11 w-full rounded-xl border border-border bg-background px-3"
+            >
+              <option value="">Select a mentor</option>
+              {mentors.map((mentor) => (
+                <option key={mentor} value={mentor}>
+                  {mentor}
+                </option>
+              ))}
+            </select>
           </div>
-
-          <div className="animate-fade-in" key={tab}>
-            {tab === "About" && (
-              <div className="prose prose-invert max-w-none">
-                <p className="text-muted-foreground leading-relaxed">{course.description}</p>
-                <p className="text-muted-foreground leading-relaxed mt-4">
-                  This course combines theory and practice — every module ends with a
-                  hands-on project to cement your learning.
-                </p>
-              </div>
-            )}
-            {tab === "Outcomes" && (
-              <ul className="grid md:grid-cols-2 gap-3">
-                {(course.outcomes || []).map((o: string, i: number) => (
-                  <li key={i} className="flex items-start gap-3 glass-card p-4">
-                    <CheckCircle2 className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
-                    <span className="text-sm">{o}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {tab === "Curriculum" && (
-              <div className="space-y-3">
-                {(Array.isArray(course.lessons) ? course.lessons : []).map((lesson, i: number) => (
-                  <div key={lesson.id || i} className="glass-card p-5 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-primary">{i + 1}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-display font-semibold text-sm">{lesson.title}</h4>
-                      {lesson.content && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{lesson.content}</p>}
-                    </div>
-                    <PlayCircle className="w-5 h-5 text-secondary shrink-0" />
-                  </div>
-                ))}
-                {(!course.lessons || course.lessons.length === 0) && (
-                  <p className="text-muted-foreground text-sm text-center py-8">No lessons available yet. Check back soon!</p>
-                )}
-              </div>
-            )}
-            {tab === "Instructors" && (
-              <div className="grid md:grid-cols-2 gap-4">
-                {course.instructor && (
-                  <div className="glass-card p-5 flex items-center gap-4">
-                    <img
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(course.celebrityTeacher || course.instructor?.name || 'Instructor')}&background=8B5CF6&color=fff&bold=true`}
-                      alt={course.instructor?.name}
-                      className="w-16 h-16 rounded-full object-cover border-2 border-secondary"
-                    />
-                    <div>
-                      <h4 className="font-display font-semibold">{course.celebrityTeacher || course.instructor?.name}</h4>
-                      <p className="text-xs text-muted-foreground">Lead Instructor</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {tab === "Reviews" && (
-              <div className="space-y-5">
-                {isEnrolled && <form onSubmit={submitReview} className="glass-card space-y-4 p-5"><h3 className="font-display font-semibold">Share your experience</h3><label className="block text-sm font-medium">Rating<select className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3" value={reviewForm.rating} onChange={(event) => setReviewForm({ ...reviewForm, rating: Number(event.target.value) })}>{[5,4,3,2,1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}</select></label><label className="block text-sm font-medium">Comment<textarea className="mt-2 min-h-24 w-full rounded-xl border border-border bg-background p-3" value={reviewForm.comment} onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })} /></label><button type="submit" className="btn-primary">Save review</button></form>}
-                {reviews.length ? reviews.map((review) => <article key={review.id} className="glass-card p-5"><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">{review.user.name}</h3><span className="text-sm font-semibold text-primary">{review.rating}/5</span></div>{review.comment && <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>}<time className="mt-2 block text-xs text-muted-foreground" dateTime={review.createdAt}>{new Date(review.createdAt).toLocaleDateString()}</time></article>) : <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">No reviews yet.</p>}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmEnroll} className="btn-primary" disabled={enrollLoading}>
+              {enrollLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
-};
-
-export default CourseDetails;
+}

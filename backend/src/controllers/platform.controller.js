@@ -3,6 +3,7 @@ const { audit } = require('../services/audit.service');
 const { safePage, calculateAssessmentScore } = require('../utils/platformRules');
 
 const pageArgs = safePage;
+const trimText = (value) => String(value ?? '').trim();
 
 const paged = (res, data, total, page, limit) => res.json({
   success: true, count: data.length, data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
@@ -310,8 +311,10 @@ exports.createAnnouncement = async (req, res, next) => {
 
 exports.createTicket = async (req, res, next) => {
   try {
-    if (!req.body.subject?.trim() || !req.body.description?.trim()) return res.status(400).json({ success: false, error: 'Subject and description are required' });
-    const data = await prisma.supportTicket.create({ data: { requesterId: req.user.id, subject: req.body.subject.trim(), description: req.body.description.trim(), priority: ['low', 'medium', 'high', 'urgent'].includes(req.body.priority) ? req.body.priority : 'medium' } });
+    const subject = trimText(req.body.subject);
+    const description = trimText(req.body.description);
+    if (!subject || !description) return res.status(400).json({ success: false, error: 'Subject and description are required' });
+    const data = await prisma.supportTicket.create({ data: { requesterId: req.user.id, subject, description, priority: ['low', 'medium', 'high', 'urgent'].includes(req.body.priority) ? req.body.priority : 'medium' } });
     res.status(201).json({ success: true, data });
   } catch (error) { next(error); }
 };
@@ -339,8 +342,9 @@ exports.addTicketMessage = async (req, res, next) => {
   try {
     const ticket = await prisma.supportTicket.findUnique({ where: { id: req.params.id } });
     if (!ticket || (req.user.role !== 'admin' && ticket.requesterId !== req.user.id)) return res.status(404).json({ success: false, error: 'Ticket not found' });
-    if (!req.body.body?.trim()) return res.status(400).json({ success: false, error: 'Message is required' });
-    const data = await prisma.ticketMessage.create({ data: { ticketId: ticket.id, authorId: req.user.id, body: req.body.body.trim() } });
+    const body = trimText(req.body.body);
+    if (!body) return res.status(400).json({ success: false, error: 'Message is required' });
+    const data = await prisma.ticketMessage.create({ data: { ticketId: ticket.id, authorId: req.user.id, body } });
     res.status(201).json({ success: true, data });
   } catch (error) { next(error); }
 };

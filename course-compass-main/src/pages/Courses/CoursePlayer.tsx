@@ -1,96 +1,133 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { useParams, Link, Navigate } from "react-router-dom";
-import { ArrowLeft, PlayCircle, FileText, CheckCircle, Loader2, ChevronRight, Lock, Award, Check, Clock } from "lucide-react";
+import { Link, Navigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Award,
+  Check,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Loader2,
+  Lock,
+  PlayCircle,
+} from "lucide-react";
 import { courseApi } from "@/api/course.api";
+import { CourseFlashcards } from "@/components/common/CourseFlashcards";
 import { useAuth } from "@/store/AuthContext";
 import { toast } from "sonner";
 
 type Lesson = { id: string; title: string; content?: string; videoUrl?: string; order: number };
 type PlayerCourse = { id: string; title: string; lessons: Lesson[] };
-type PlayerEnrollment = { progress: number; certificateApproved: boolean; mentor?: string; lastLessonId?: string; completedLessons: Array<{ id: string }> };
+type PlayerEnrollment = {
+  progress: number;
+  certificateApproved: boolean;
+  mentor?: string;
+  lastLessonId?: string;
+  completedLessons: Array<{ id: string }>;
+};
+
+const mentors = ["Aisha Khan", "Rahul Verma", "Meera Iyer", "Arjun Patel", "Neha Sharma", "Virtual Mentor"];
 
 export default function CoursePlayer() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  
+
   const [course, setCourse] = useState<PlayerCourse | null>(null);
   const [enrollment, setEnrollment] = useState<PlayerEnrollment | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [markingComplete, setMarkingComplete] = useState(false);
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
-  
-  // To check if they are actually enrolled
-  const [isEnrolled, setIsEnrolled] = useState(false);
-
-  // Mentor Selection State
-  const [mentorChangeOpen, setMentorChangeOpen] = useState(false);
+  const [mentorOpen, setMentorOpen] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState("");
   const [updatingMentor, setUpdatingMentor] = useState(false);
-  const celebrities = ["Virat Kohli", "Salman Khan", "Narendra Modi", "Sachin Tendulkar", "Hardik Pandya", "Virtual Mentor"];
+
+  const isEnrolled = user?.role === "admin" ? true : Boolean(enrollment);
 
   const fetchEnrollment = useCallback(async (): Promise<PlayerEnrollment | null> => {
     try {
       const res = await courseApi.getEnrollmentByCourse(id!);
       setEnrollment(res.data.data);
       return res.data.data;
-    } catch (e) {
+    } catch {
       return null;
     }
   }, [id]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    let active = true;
+    const load = async () => {
       try {
-        // Fetch course details
-        const courseRes = await courseApi.getCourseById(id!);
-        const c = courseRes.data.data;
-        c.lessons = [...(c.lessons || [])].sort((a: Lesson, b: Lesson) => a.order - b.order);
-        setCourse(c);
+        const courseResponse = await courseApi.getCourseById(id!);
+        const nextCourse = courseResponse.data.data as PlayerCourse;
+        nextCourse.lessons = [...(nextCourse.lessons || [])].sort((a, b) => a.order - b.order);
+        if (!active) return;
+        setCourse(nextCourse);
 
-        // Fetch enrollments to verify access
         if (user?.role === "admin") {
-          setIsEnrolled(true);
+          setEnrollment({
+            progress: 100,
+            certificateApproved: true,
+            completedLessons: nextCourse.lessons.map((lesson) => ({ id: lesson.id })),
+          });
         } else {
           const enr = await fetchEnrollment();
-          setIsEnrolled(!!enr);
+          if (!active) return;
           if (enr?.lastLessonId) {
-            const resumeIndex = c.lessons.findIndex((lesson: { id: string }) => lesson.id === enr.lastLessonId);
+            const resumeIndex = nextCourse.lessons.findIndex((lesson) => lesson.id === enr.lastLessonId);
             if (resumeIndex >= 0) setActiveLessonIndex(resumeIndex);
           }
         }
       } catch (err) {
         console.error(err);
       } finally {
-        setIsLoading(false);
+        if (active) setLoading(false);
       }
     };
-    
-    if (id) fetchData();
-  }, [fetchEnrollment, id, user]);
+
+    if (id) void load();
+    return () => {
+      active = false;
+    };
+  }, [fetchEnrollment, id, user?.role]);
+
+  const activeLesson = useMemo(() => course?.lessons?.[activeLessonIndex] ?? null, [activeLessonIndex, course]);
+  const completedLessonIds = useMemo(
+    () => new Set(enrollment?.completedLessons?.map((lesson) => lesson.id) || []),
+    [enrollment?.completedLessons],
+  );
+  const isCurrentCompleted = Boolean(activeLesson?.id && completedLessonIds.has(activeLesson.id));
+  const isFullyCompleted = enrollment?.progress === 100;
+
+  const renderVideo = (url?: string) => {
+    if (!url) return null;
+    if (/\.(mp4|webm|ogg)$/i.test(url)) {
+      return <video controls className="h-full w-full bg-black" src={url} />;
+    }
+    const embedUrl = url.includes("youtube.com/watch?v=")
+      ? url.replace("watch?v=", "embed/")
+      : url.includes("youtu.be/")
+        ? url.replace("youtu.be/", "youtube.com/embed/")
+        : url;
+    return <iframe className="h-full w-full bg-black" src={embedUrl} title="Video player" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />;
+  };
 
   const handleMarkComplete = async () => {
-    if (!enrollment || !activeLesson) return;
-    
+    if (!course || !activeLesson || !enrollment || isCurrentCompleted) return;
     try {
-      setIsMarkingComplete(true);
-      await courseApi.completeLesson(id!, activeLesson.id);
-      
-      // Re-fetch enrollment to get updated progress and completed lessons
+      setMarkingComplete(true);
+      await courseApi.completeLesson(course.id, activeLesson.id);
       await fetchEnrollment();
-      
-      toast.success("Lesson marked as complete!");
-      
-      // Auto-advance to next lesson if available
+      toast.success("Lesson marked complete.");
       if (activeLessonIndex < course.lessons.length - 1) {
         const nextIndex = activeLessonIndex + 1;
         setActiveLessonIndex(nextIndex);
-        courseApi.updateResumePosition(id!, course.lessons[nextIndex].id).catch(() => {});
+        courseApi.updateResumePosition(course.id, course.lessons[nextIndex].id).catch(() => {});
       }
     } catch (err: unknown) {
-      toast.error((axios.isAxiosError(err) && err.response?.data?.error) || "Failed to mark lesson as complete");
+      toast.error((axios.isAxiosError(err) && err.response?.data?.error) || "Failed to update lesson progress.");
     } finally {
-      setIsMarkingComplete(false);
+      setMarkingComplete(false);
     }
   };
 
@@ -99,20 +136,20 @@ export default function CoursePlayer() {
     try {
       setUpdatingMentor(true);
       await courseApi.updateEnrollmentMentor(id!, selectedMentor);
-      setEnrollment((prev) => prev ? { ...prev, mentor: selectedMentor } : prev);
-      toast.success(`Mentor changed to ${selectedMentor}!`);
-      setMentorChangeOpen(false);
+      setEnrollment((current) => (current ? { ...current, mentor: selectedMentor } : current));
+      toast.success(`Mentor changed to ${selectedMentor}.`);
+      setMentorOpen(false);
     } catch (err: unknown) {
-      toast.error((axios.isAxiosError(err) && err.response?.data?.error) || "Failed to change mentor");
+      toast.error((axios.isAxiosError(err) && err.response?.data?.error) || "Failed to change mentor.");
     } finally {
       setUpdatingMentor(false);
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      <div className="container grid min-h-[60vh] place-items-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -121,173 +158,116 @@ export default function CoursePlayer() {
 
   if (!isEnrolled) {
     return (
-      <div className="container py-20 text-center">
-        <Lock className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-        <h2 className="font-display font-bold text-2xl mb-2">Access Denied</h2>
-        <p className="text-muted-foreground mb-6">You must be enrolled to view this course's content.</p>
-        <Link to={`/courses/${id}`} className="btn-primary inline-flex items-center gap-2">
-          View Course Details
-        </Link>
+      <div className="page-shell">
+        <div className="surface-card mx-auto max-w-2xl py-14 text-center">
+          <Lock className="mx-auto h-14 w-14 text-muted-foreground" />
+          <h2 className="mt-4 text-2xl font-bold">Access denied</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You must be enrolled to view this course content.</p>
+          <Link to={`/courses/${id}`} className="btn-primary mt-6 inline-flex">
+            View course details
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const activeLesson = course.lessons[activeLessonIndex];
-  const completedLessonIds = new Set(enrollment?.completedLessons?.map((lesson) => lesson.id) || []);
-  const isCurrentCompleted = completedLessonIds.has(activeLesson?.id);
-  const isFullyCompleted = enrollment?.progress === 100;
-  
-  // Helper to figure out how to render the video URL
-  const renderVideo = (url?: string) => {
-    if (!url) return null;
-    
-    if (url.toLowerCase().endsWith(".mp4") || url.toLowerCase().endsWith(".webm") || url.toLowerCase().endsWith(".ogg")) {
-      return (
-        <video controls className="w-full h-full bg-black" src={url}>
-          Your browser does not support the video tag.
-        </video>
-      );
-    }
-    
-    let embedUrl = url;
-    if (url.includes("youtube.com/watch?v=")) {
-      embedUrl = url.replace("watch?v=", "embed/");
-    } else if (url.includes("youtu.be/")) {
-      embedUrl = url.replace("youtu.be/", "youtube.com/embed/");
-    }
-    
-    return (
-      <iframe 
-        className="w-full h-full bg-black"
-        src={embedUrl} 
-        title="Video Player" 
-        frameBorder="0" 
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-        allowFullScreen 
-      />
-    );
-  };
-
   return (
-    <div className="flex flex-col min-h-screen bg-background border-t border-border">
-      {/* Top Bar */}
-      <div className="h-16 border-b border-border flex items-center px-6 shrink-0 bg-muted/10">
-        <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors mr-4">
-          <ArrowLeft className="w-5 h-5" />
+    <div className="page-shell">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary">
+          <ArrowLeft className="h-4 w-4" />
+          Back to dashboard
         </Link>
-        <div className="h-6 w-px bg-border mx-2 mr-4" />
-        <h1 className="font-display font-semibold truncate flex-1">{course.title}</h1>
-        
-        {enrollment && (
-          <div className="flex items-center gap-4">
-            <Link to={`/courses/${id}/work`} className="hidden rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 sm:inline-flex">
-              Course work
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="rounded-full border border-border bg-card px-4 py-2 text-sm">
+            Progress: <span className="font-semibold text-primary">{enrollment?.progress || 0}%</span>
+          </div>
+          <Link to={`/courses/${id}/work`} className="btn-outline-teal">
+            Course work
+          </Link>
+          {isFullyCompleted && enrollment?.certificateApproved && (
+            <Link to={`/certificate/${id}`} className="btn-primary">
+              <Award className="h-4 w-4" />
+              View certificate
             </Link>
-            <div className="text-sm font-medium">
-              Progress: <span className="text-primary">{enrollment.progress}%</span>
-            </div>
-            {isFullyCompleted && enrollment.certificateApproved && (
-              <Link to={`/certificate/${id}`} className="btn-primary !py-1.5 !px-3 text-sm flex items-center gap-2">
-                <Award className="w-4 h-4" /> View Certificate
-              </Link>
-            )}
-            {isFullyCompleted && !enrollment.certificateApproved && (
-              <div className="bg-muted/50 border border-border text-muted-foreground px-3 py-1.5 rounded-lg text-sm flex items-center gap-2">
-                <Clock className="w-4 h-4" /> Pending Approval
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden h-[calc(100vh-130px)]">
-        {/* Left: Player Area */}
-        <div className="flex-1 overflow-y-auto flex flex-col bg-black/5 relative pb-20">
-          {/* Video Container */}
-          <div className="w-full aspect-video bg-black flex items-center justify-center relative shrink-0">
-            {activeLesson?.videoUrl ? (
-              renderVideo(activeLesson.videoUrl)
-            ) : (
-              <div className="text-center text-muted-foreground">
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>No video available for this lesson.</p>
-                <p className="text-xs mt-1 opacity-70">Please read the content below.</p>
-              </div>
-            )}
-          </div>
-          
-          {/* Lesson Content */}
-          <div className="p-6 lg:p-10 max-w-4xl mx-auto w-full flex-1 mb-20">
-            <div className="flex items-start justify-between gap-4 mb-6">
-              <div>
-                <h2 className="font-display font-bold text-2xl md:text-3xl mb-2 flex items-center gap-3">
-                  {activeLesson?.order}. {activeLesson?.title || "Welcome"}
-                  {isCurrentCompleted && (
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500/20 text-green-500" title="Completed">
-                      <Check className="w-4 h-4" />
-                    </span>
-                  )}
-                </h2>
-              </div>
-            </div>
-            
-            <div className="prose prose-invert max-w-none text-muted-foreground">
-              {activeLesson?.content ? (
-                <div className="whitespace-pre-wrap">{activeLesson.content}</div>
-              ) : (
-                <p className="italic opacity-50">No additional notes provided for this lesson.</p>
-              )}
-            </div>
-          </div>
-          
-          {/* Action Footer */}
-          {enrollment && activeLesson && (
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t border-border flex justify-between items-center shadow-lg">
-              <div className="text-sm text-muted-foreground">
-                Lesson {activeLessonIndex + 1} of {course.lessons.length}
-              </div>
-              
-              <button 
-                onClick={handleMarkComplete}
-                disabled={isCurrentCompleted || isMarkingComplete}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-all ${
-                  isCurrentCompleted 
-                    ? "bg-green-500/10 text-green-500 border border-green-500/20 cursor-default" 
-                    : "btn-primary shadow-md hover:shadow-lg"
-                }`}
-              >
-                {isMarkingComplete ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : isCurrentCompleted ? (
-                  <Check className="w-4 h-4" />
-                ) : null}
-                {isCurrentCompleted ? "Completed" : "Mark as Complete"}
-              </button>
+          )}
+          {isFullyCompleted && !enrollment?.certificateApproved && (
+            <div className="rounded-full border border-border bg-card px-4 py-2 text-sm text-muted-foreground">
+              <Clock className="mr-2 inline h-4 w-4" />
+              Certificate pending approval
             </div>
           )}
         </div>
+      </div>
 
-        {/* Right: Sidebar Syllabus */}
-        <div className="h-full w-full shrink-0 border-l border-border bg-muted/5 lg:w-[clamp(280px,27vw,380px)] flex flex-col">
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <section className="surface-card overflow-hidden p-0">
+          <div className="aspect-video bg-muted">
+            {activeLesson?.videoUrl ? (
+              renderVideo(activeLesson.videoUrl)
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center text-center">
+                <FileText className="h-12 w-12 text-muted-foreground" />
+                <p className="mt-3 font-semibold">No video for this lesson</p>
+                <p className="mt-1 text-sm text-muted-foreground">Read the lesson notes below to continue.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 md:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="page-eyebrow">Lesson workspace</p>
+                <h1 className="mt-2 text-3xl font-bold tracking-tight">{activeLesson?.order}. {activeLesson?.title || course.title}</h1>
+              </div>
+              {isCurrentCompleted ? (
+                <span className="inline-flex items-center gap-2 rounded-full border border-secondary/20 bg-secondary/10 px-3 py-2 text-xs font-semibold text-secondary">
+                  <Check className="h-4 w-4" />
+                  Completed
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-border bg-muted/20 p-5">
+              <p className="text-sm leading-7 brand-body whitespace-pre-wrap">
+                {activeLesson?.content || "No additional notes provided for this lesson."}
+              </p>
+            </div>
+
+            <CourseFlashcards courseId={course.id} courseTitle={course.title} />
+
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm text-muted-foreground">
+                Lesson {activeLessonIndex + 1} of {course.lessons.length}
+              </p>
+              <button
+                type="button"
+                onClick={handleMarkComplete}
+                disabled={isCurrentCompleted || markingComplete}
+                className={isCurrentCompleted ? "rounded-xl border border-secondary/20 bg-secondary/10 px-5 py-3 text-sm font-semibold text-secondary" : "btn-primary"}
+              >
+                {markingComplete ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrentCompleted ? <Check className="h-4 w-4" /> : null}
+                {isCurrentCompleted ? "Completed" : "Mark as complete"}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
           {enrollment && (
-            <div className="p-5 border-b border-border shrink-0 bg-primary/5">
-              <h4 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">Your Celebrity Mentor</h4>
-              <div className="flex items-center gap-3">
-                <img
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(enrollment.mentor || "Virtual Mentor")}&background=8B5CF6&color=fff&bold=true`}
-                  alt={enrollment.mentor || "Virtual Mentor"}
-                  className="w-10 h-10 rounded-full object-cover border-2 border-secondary"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate text-foreground">{enrollment.mentor || "Virtual Mentor"}</p>
-                  <p className="text-xs text-muted-foreground">Personalized Guide</p>
+            <div className="surface-card">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Your mentor</p>
+                  <h2 className="mt-1 text-lg font-semibold">{enrollment.mentor || "Virtual Mentor"}</h2>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedMentor(enrollment.mentor || "Virtual Mentor");
-                    setMentorChangeOpen(true);
+                    setMentorOpen(true);
                   }}
-                  className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                  className="text-sm font-semibold text-primary hover:underline"
                 >
                   Change
                 </button>
@@ -295,94 +275,102 @@ export default function CoursePlayer() {
             </div>
           )}
 
-          <div className="p-5 border-b border-border shrink-0">
-            <h3 className="font-display font-bold text-lg mb-1">Course Content</h3>
-            <p className="text-xs text-muted-foreground">{course.lessons.length} lessons</p>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {course.lessons.length === 0 ? (
-              <div className="text-center p-6 text-sm text-muted-foreground">
-                No lessons available yet.
+          <div className="surface-card">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Course content</p>
+                <h2 className="mt-1 text-lg font-semibold">{course.lessons.length} lessons</h2>
               </div>
-            ) : (
-              course.lessons.map((lesson, i: number) => {
-                const isActive = activeLessonIndex === i;
-                const isCompleted = completedLessonIds.has(lesson.id);
-                
-                return (
-                  <button
-                    key={lesson.id}
-                    onClick={() => { setActiveLessonIndex(i); if (user?.role !== 'admin') courseApi.updateResumePosition(id!, lesson.id).catch(() => {}); }}
-                    className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition-colors ${
-                      isActive ? "bg-primary/10 border border-primary/30" : "hover:bg-muted/40 border border-transparent"
-                    }`}
-                  >
-                    <div className="mt-0.5 shrink-0">
-                      {isCompleted ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      ) : isActive ? (
-                        <PlayCircle className="w-4 h-4 text-primary" />
-                      ) : (
-                        <CheckCircle className="w-4 h-4 text-muted-foreground/30" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium leading-tight mb-1 ${
-                        isActive ? "text-primary" : isCompleted ? "text-foreground" : "text-muted-foreground"
-                      }`}>
-                        {lesson.order}. {lesson.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {lesson.videoUrl ? "Video" : "Article"}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })
-            )}
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {course.lessons.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  No lessons available yet.
+                </p>
+              ) : (
+                course.lessons.map((lesson, index) => {
+                  const isActive = activeLessonIndex === index;
+                  const completed = completedLessonIds.has(lesson.id);
+                  return (
+                    <button
+                      key={lesson.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveLessonIndex(index);
+                        if (user?.role !== "admin") {
+                          courseApi.updateResumePosition(id!, lesson.id).catch(() => {});
+                        }
+                      }}
+                      className={`w-full rounded-2xl border p-4 text-left transition ${
+                        isActive ? "border-primary/30 bg-primary/10" : "border-border bg-card hover:bg-muted/40"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5">
+                          {completed ? (
+                            <CheckCircle2 className="h-4 w-4 text-secondary" />
+                          ) : isActive ? (
+                            <PlayCircle className="h-4 w-4 text-primary" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border border-border" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-semibold ${isActive ? "text-primary" : "text-foreground"}`}>
+                            {lesson.order}. {lesson.title}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">{lesson.videoUrl ? "Video lesson" : "Reading lesson"}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
+
+          <div className="surface-card">
+            <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-muted-foreground">Learning reminders</h2>
+            <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+              <li className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-secondary" />Progress is saved as you move through lessons</li>
+              <li className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-secondary" />Assignments live in the course work center</li>
+              <li className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-secondary" />Completion can unlock a verified certificate</li>
+            </ul>
+          </div>
+        </aside>
       </div>
-      
-      {/* Mentor Change Modal */}
-      {mentorChangeOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-background border border-border rounded-xl shadow-2xl max-w-md w-full overflow-hidden p-6 relative">
-            <h3 className="text-lg font-bold font-display mb-2 text-foreground">Change Celebrity Mentor</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Select the celebrity you want to guide you through this course.
-            </p>
-            
-            <div className="py-4">
-              <label className="text-sm font-medium text-foreground/80 mb-2 block">Choose Mentor</label>
+
+      <div className="mt-6 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
+        Need a different path? Return to the dashboard or switch courses from the catalog without losing your session.
+      </div>
+
+      {mentorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[1.5rem] border border-border bg-card p-6 shadow-[var(--shadow-overlay)]">
+            <h3 className="text-lg font-bold">Change mentor</h3>
+            <p className="mt-2 text-sm text-muted-foreground">Pick the mentor who should guide this course experience.</p>
+            <div className="mt-4">
               <select
                 value={selectedMentor}
-                onChange={(e) => setSelectedMentor(e.target.value)}
-                className="w-full bg-muted/30 border border-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-foreground"
+                onChange={(event) => setSelectedMentor(event.target.value)}
+                className="h-11 w-full rounded-xl border border-border bg-background px-3"
               >
-                <option value="">Select a Mentor</option>
-                {celebrities.map((c) => (
-                  <option key={c} value={c} className="bg-background text-foreground">{c}</option>
+                <option value="">Select a mentor</option>
+                {mentors.map((mentor) => (
+                  <option key={mentor} value={mentor}>
+                    {mentor}
+                  </option>
                 ))}
               </select>
             </div>
-            
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setMentorChangeOpen(false)}
-                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded-lg transition-colors"
-                disabled={updatingMentor}
-              >
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setMentorOpen(false)} className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted/60">
                 Cancel
               </button>
-              <button
-                onClick={handleMentorChange}
-                disabled={!selectedMentor || updatingMentor}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/95 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2"
-              >
-                {updatingMentor && <Loader2 className="w-4 h-4 animate-spin" />}
-                Confirm Change
+              <button type="button" onClick={handleMentorChange} disabled={!selectedMentor || updatingMentor} className="btn-primary">
+                {updatingMentor ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Save mentor
               </button>
             </div>
           </div>

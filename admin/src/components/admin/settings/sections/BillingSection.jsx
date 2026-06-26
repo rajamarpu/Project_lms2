@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { MdCreditCard, MdReceipt, MdAutorenew } from 'react-icons/md';
 import SettingsToggle from '../SettingsToggle';
@@ -9,7 +8,7 @@ const INVOICES = [
   { date: 'Mar 30, 2025', desc: 'Enterprise Plan — Mar 2025', amount: '₹24,999', status: 'Paid' },
 ];
 
-const BillingSection = ({ billing, onUpdate, accent }) => (
+const BillingSection = ({ billing, onUpdate }) => (
   <div className="space-y-6">
     <motion.div
       whileHover={{ y: -2 }}

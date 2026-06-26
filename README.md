@@ -61,9 +61,9 @@ Then start the learner frontend in another terminal:
 npm run dev
 ```
 
-- **Frontend**: http://localhost:3000
+- **Learner app only**: http://localhost:3000
 - **Backend APIs**: http://localhost:5001/api-docs
-- **Admin Portal**: run `npm run admin`, then open http://localhost:3001
+- **Admin app only**: run `npm run admin`, then open http://localhost:3001
 
 To launch the entire stack concurrently (Frontend, Backend, and Admin), run:
 ```bash

@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 
 const SettingsToggle = ({ value, onChange, accent = '#3B82F6' }) => (

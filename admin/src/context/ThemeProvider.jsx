@@ -1,18 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { applyTheme, getStoredTheme, setStoredTheme } from '../utils/theme';
 
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => getStoredTheme());
-  const [resolvedTheme, setResolvedTheme] = useState(() =>
-    typeof document !== 'undefined' ? document.documentElement.dataset.theme || 'dark' : 'dark'
-  );
-
-  useEffect(() => {
-    const resolved = applyTheme(theme);
-    setResolvedTheme(resolved);
-  }, [theme]);
+  const [resolvedTheme, setResolvedTheme] = useState(() => applyTheme(getStoredTheme()));
 
   useEffect(() => {
     if (theme !== 'system') return undefined;
@@ -27,6 +21,7 @@ export function ThemeProvider({ children }) {
 
   const setTheme = useCallback((next) => {
     setStoredTheme(next);
+    setResolvedTheme(applyTheme(next));
     setThemeState(next);
   }, []);
 

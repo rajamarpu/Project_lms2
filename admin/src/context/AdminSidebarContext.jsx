@@ -1,4 +1,5 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 export const ADMIN_SIDEBAR_STORAGE_KEY = 'admin-sidebar-collapsed';
 export const SIDEBAR_WIDTH_EXPANDED = 280;
@@ -15,7 +16,29 @@ function readCollapsedFromStorage() {
 }
 
 export function AdminSidebarProvider({ children }) {
-  const [collapsed, setCollapsed] = useState(readCollapsedFromStorage);
+  const readInitialCollapsed = () => {
+    const stored = readCollapsedFromStorage();
+    if (stored) return true;
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1280;
+    }
+    return false;
+  };
+
+  const [collapsed, setCollapsed] = useState(readInitialCollapsed);
+
+  useEffect(() => {
+    const syncMobileCollapse = () => {
+      if (window.innerWidth < 1280) {
+        setCollapsed(true);
+      }
+    };
+
+    window.addEventListener('resize', syncMobileCollapse);
+    syncMobileCollapse();
+
+    return () => window.removeEventListener('resize', syncMobileCollapse);
+  }, []);
 
   const setCollapsedPersisted = useCallback((value) => {
     setCollapsed(value);

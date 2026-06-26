@@ -1,4 +1,5 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 const DateRangeContext = createContext(null);
 
@@ -71,7 +72,7 @@ export function daysInRange(start, end) {
   return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 }
 
-/** Scale mock metrics by selected range vs a 30-day baseline */
+/** Keep date-range state available for dashboards that slice persisted data by period. */
 export function rangeScaleFactor(start, end) {
   return daysInRange(start, end) / 30;
 }

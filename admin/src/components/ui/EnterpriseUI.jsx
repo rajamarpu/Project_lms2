@@ -50,15 +50,18 @@ export function Button({ children, variant = 'primary', icon: Icon, className = 
   );
 }
 
-export function StatWidget({ label, value, delta, tone = 'blue', icon: Icon, footer, source = 'Live database' }) {
+export function StatWidget({ label, value, delta, tone = 'blue', icon: Icon, footer, source = 'Live database', onClick, ariaLabel }) {
   const displayValue = value === null || value === undefined || value === '' ? '—' : value;
-  return (
-    <motion.article
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.18, ease: 'easeOut' }}
-      className={`enterprise-card stat-widget tone-${tone}`}
-      aria-label={`${label}: ${displayValue}`}
-    >
+  const interactive = typeof onClick === 'function';
+  const sharedProps = {
+    whileHover: { y: -4 },
+    transition: { duration: 0.18, ease: 'easeOut' },
+    className: `enterprise-card stat-widget tone-${tone} ${interactive ? 'stat-widget-clickable' : ''}`,
+    'aria-label': ariaLabel || `${label}: ${displayValue}`,
+  };
+
+  const body = (
+    <>
       <span className="stat-accent-line" aria-hidden />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -81,12 +84,22 @@ export function StatWidget({ label, value, delta, tone = 'blue', icon: Icon, foo
         {footer && <span className="stat-detail">{footer}</span>}
       </div>
       <div className="stat-source"><span aria-hidden />{source}</div>
-    </motion.article>
+    </>
   );
+
+  if (interactive) {
+    return (
+      <motion.button type="button" onClick={onClick} {...sharedProps}>
+        {body}
+      </motion.button>
+    );
+  }
+
+  return <motion.article {...sharedProps}>{body}</motion.article>;
 }
 
-export function StatGrid({ children }) {
-  return <section className="metric-grid">{children}</section>;
+export function StatGrid({ children, className = '' }) {
+  return <section className={`metric-grid ${className}`}>{children}</section>;
 }
 
 export function FilterBar({ value, onChange, placeholder = 'Search', children, onFilter, onExport }) {
@@ -140,7 +153,7 @@ export function EnterpriseTable({ columns, rows, emptyTitle = 'No records found'
           <thead>
             <tr>
               {columns.map((column) => (
-                <th key={column.key} scope="col" aria-sort={column.sortable ? 'none' : undefined}>
+                <th key={column.key} scope="col" aria-sort={column.sortable ? 'none' : undefined} className="sticky top-0 z-10 bg-[var(--admin-surface-raised)]">
                   {column.sortable && onSort ? <button type="button" onClick={() => onSort(column.key)} className="inline-flex items-center gap-1 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">{column.header}<LuChevronDown size={13} aria-hidden /></button> : <span>{column.header}</span>}
                 </th>
               ))}

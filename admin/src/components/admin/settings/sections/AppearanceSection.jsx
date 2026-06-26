@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { MdCheck } from 'react-icons/md';
 import { useTheme } from '../../../../context/ThemeProvider';

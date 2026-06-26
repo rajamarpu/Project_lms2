@@ -1,10 +1,28 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, Target, ArrowRight, Loader2, Layers, CheckCircle2 } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  GraduationCap,
+  Layers3,
+  Loader2,
+  MapPinned,
+  Sparkles,
+  Target,
+  TrendingUp,
+} from "lucide-react";
 import { courseApi } from "@/api/course.api";
 
 type PathCourse = { id: string; title: string; duration?: string; level?: string };
 type LearningPath = { id: string; slug?: string; title: string; description: string; duration?: string; color?: string; courses?: PathCourse[] };
+
+const roadmapNotes = [
+  { title: "Role-based paths", text: "Stack your learning by job family, skill tier, or career outcome." },
+  { title: "Milestone visibility", text: "Each path shows checkpoints, momentum, and completion context." },
+  { title: "Enterprise planning", text: "Great for cohorts, onboarding programs, and upskilling initiatives." },
+];
 
 const LearningPaths = () => {
   const [paths, setPaths] = useState<LearningPath[]>([]);
@@ -25,83 +43,133 @@ const LearningPaths = () => {
   }, []);
 
   return (
-    <div className="container py-10 min-h-[calc(100vh-80px)]">
-      <div className="max-w-2xl mb-12">
-        <h1 className="font-display font-bold text-3xl md:text-4xl mb-3">Learning Paths</h1>
-        <p className="text-muted-foreground">Structured journeys curated by experts. Follow a path to master a role from beginner to job-ready.</p>
-      </div>
+    <div className="page-shell container py-8 lg:py-10 min-h-[calc(100vh-80px)]">
+      <section className="mb-10 overflow-hidden rounded-[2rem] surface-card p-6 md:p-8">
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+              <MapPinned className="h-3.5 w-3.5" /> Career roadmaps
+            </div>
+            <h1 className="font-display text-3xl font-bold tracking-tight md:text-5xl">
+              Follow a path from first lesson to job-ready confidence.
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+              Learning paths organize the catalog into structured journeys so learners can see exactly where they are, what comes next, and how their career track is progressing.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              { icon: Target, label: "Tracks", value: "Focused" },
+              { icon: TrendingUp, label: "Momentum", value: "Visible" },
+              { icon: BookOpen, label: "Lessons", value: "Sequenced" },
+            ].map(({ icon: Icon, label, value }) => (
+              <div key={label} className="rounded-2xl border border-border bg-background/55 p-4">
+                <Icon className="h-5 w-5 text-primary" />
+                <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+                <p className="mt-1 text-xl font-bold">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {isLoading ? (
-        <div className="flex justify-center p-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="flex justify-center rounded-[2rem] border border-dashed border-border p-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : paths.length === 0 ? (
-        <div className="p-16 text-center border border-border/50 rounded-2xl bg-card/30 backdrop-blur-sm">
-          <p className="text-muted-foreground mb-6 text-lg">No learning paths available yet. Create some courses first!</p>
+        <div className="rounded-[2rem] border border-dashed border-border bg-card/35 p-16 text-center">
+          <GraduationCap className="mx-auto h-10 w-10 text-primary" />
+          <p className="mt-4 text-lg font-semibold">No learning paths available yet</p>
+          <p className="mt-2 text-sm text-muted-foreground">Create courses first to unlock structured journeys and career tracks.</p>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className="grid gap-8 lg:grid-cols-2">
           {paths.map((path, idx) => {
             const isOrange = path.color === "orange";
+            const accentClass = isOrange ? "from-primary to-secondary" : "from-secondary to-primary";
+
             return (
-              <div
+              <article
                 key={path.id}
-                className="glass-card p-8 md:p-10 opacity-0 animate-fade-in hover:border-secondary transition-all flex flex-col"
-                style={{ animationDelay: `${idx * 120}ms`, animationFillMode: "forwards" }}
+                className="surface-card flex flex-col rounded-[2rem] p-6 md:p-8 opacity-0 animate-fade-in"
+                style={{ animationDelay: `${idx * 100}ms`, animationFillMode: "forwards" }}
               >
-                <div className="flex items-start justify-between mb-5">
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <span className={`text-xs font-mono px-2.5 py-1 rounded-md border ${isOrange ? "bg-primary/15 text-primary border-primary/40" : "bg-secondary/15 text-secondary border-secondary/40"}`}>
-                      PATH
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.28em] ${isOrange ? "border-primary/35 bg-primary/10 text-primary" : "border-secondary/35 bg-secondary/10 text-secondary"}`}>
+                      Path
                     </span>
-                    <h2 className="font-display font-bold text-2xl mt-3">{path.title}</h2>
+                    <h2 className="mt-4 font-display text-2xl font-bold">{path.title}</h2>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{path.description}</p>
                   </div>
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${isOrange ? "bg-primary/15 text-primary" : "bg-secondary/15 text-secondary"}`}>
-                    <Layers className="w-7 h-7" />
+                  <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${accentClass} text-primary-foreground`}>
+                    <Layers3 className="h-7 w-7" />
                   </div>
                 </div>
 
-                <p className="text-sm text-muted-foreground mb-5">{path.description}</p>
-
-                <div className="flex gap-6 text-sm text-muted-foreground mb-10">
-                  <span className="flex items-center gap-2"><Clock className="w-4 h-4 text-foreground" /> {path.duration}</span>
-                  <span className="flex items-center gap-2"><Layers className="w-4 h-4 text-foreground" /> {path.courses?.length || 0} courses</span>
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-border bg-background/50 p-4">
+                    <Clock className="h-5 w-5 text-primary" />
+                    <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">Duration</p>
+                    <p className="mt-1 text-lg font-semibold">{path.duration || "Self-paced"}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-background/50 p-4">
+                    <CheckCircle2 className="h-5 w-5 text-secondary" />
+                    <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">Courses</p>
+                    <p className="mt-1 text-lg font-semibold">{path.courses?.length || 0} modules</p>
+                  </div>
                 </div>
 
-                {/* Node flow */}
-                <div className="space-y-2 mb-10 flex-1">
+                <div className="mt-6 space-y-3">
                   {path.courses?.map((c, i) => (
                     <div key={c.id} className="flex gap-4">
                       <div className="flex flex-col items-center">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
-                          i === 0 ? (isOrange ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-secondary-foreground border-secondary")
-                                  : "bg-card border-border text-muted-foreground"
-                        }`}>
-                          {i === 0 ? <CheckCircle2 className="w-5 h-5" /> : i + 1}
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold ${i === 0 ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}>
+                          {i === 0 ? <Sparkles className="h-4 w-4" /> : i + 1}
                         </div>
-                        {i < path.courses.length - 1 && (
-                          <div className={`w-0.5 flex-1 my-2 ${isOrange ? "bg-gradient-to-b from-primary/60 to-border" : "bg-gradient-to-b from-secondary/60 to-border"}`} style={{ minHeight: "36px" }} />
-                        )}
+                        {i < (path.courses?.length || 0) - 1 && <div className={`my-2 w-0.5 flex-1 bg-gradient-to-b ${accentClass}`} style={{ minHeight: "28px" }} />}
                       </div>
-                      <Link to={`/learn/${c.id}`} className="flex-1 pb-6 group pt-1">
-                        <p className="font-semibold text-base group-hover:text-primary transition-colors">{c.title}</p>
-                        <p className="text-sm text-muted-foreground mt-1.5">{c.duration || "4h 30m"} • {c.level || "Beginner"}</p>
+                      <Link to={`/learn/${c.id}`} className="group flex-1 pb-5 pt-1">
+                        <p className="font-semibold transition-colors group-hover:text-primary">{c.title}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{c.duration || "4h 30m"} · {c.level || "Beginner"}</p>
                       </Link>
                     </div>
                   ))}
                 </div>
 
-                <Link 
-                  to={`/paths/${path.slug}`}
-                  className="inline-flex justify-center items-center gap-2 py-3.5 mt-auto btn-primary w-full"
+                <div className="mt-auto rounded-2xl border border-border bg-background/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="mt-0.5 h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-medium">Journey insight</p>
+                      <p className="text-sm text-muted-foreground">
+                        This path is designed to help learners see a clear route from foundation to advanced practice.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Link
+                  to={`/learning-paths/${path.slug || path.id}`}
+                  className="btn-primary mt-6 w-full justify-center"
                 >
-                  View Full Roadmap <ArrowRight className="w-4 h-4" />
+                  View full roadmap <ArrowRight className="h-4 w-4" />
                 </Link>
-              </div>
+              </article>
             );
           })}
         </div>
       )}
+
+      <section className="mt-10 grid gap-4 md:grid-cols-3">
+        {roadmapNotes.map(({ title, text }) => (
+          <article key={title} className="surface-card rounded-[1.75rem] p-5">
+            <p className="font-semibold">{title}</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
+          </article>
+        ))}
+      </section>
     </div>
   );
 };

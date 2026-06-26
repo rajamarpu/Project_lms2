@@ -11,7 +11,13 @@ API.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
-    if (error.response?.status !== 401 || original?._retried || original?.url?.includes('/auth/refresh')) {
+    if (error.response?.status !== 401 || original?._retried || original?.url?.includes('/auth/refresh') || original?.url?.includes('/auth/login') || original?.url?.includes('/auth/register')) {
+      if (!error.response) {
+        return Promise.reject({ response: { status: 0, data: { error: 'Network error. Please check your connection.' } } });
+      }
+      if (!error.response.data) {
+        return Promise.reject({ response: { status: error.response.status, data: { error: `Request failed with status ${error.response.status}` } } });
+      }
       return Promise.reject(error);
     }
     original._retried = true;

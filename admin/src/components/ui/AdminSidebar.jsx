@@ -25,14 +25,20 @@ import {
   LuFileChartLine,
   LuBell,
   LuSparkles,
+  LuLayers,
+  LuUserCog,
+  LuGraduationCap,
 } from 'react-icons/lu';
 
 // ── Per-item accent colour config ─────────────────────────────────────────────
 const ACCENT = {
   Dashboard:          { color: '#3B82F6', rgb: '59,130,246'  },
   Students:           { color: '#06B6D4', rgb: '6,182,212'   },
-  'Celebrity Teachers': { color: '#8B5CF6', rgb: '139,92,246' },
+  Instructors:         { color: '#8B5CF6', rgb: '139,92,246' },
   Courses:            { color: '#F97316', rgb: '249,115,22'  },
+  Enrollments:         { color: '#14B8A6', rgb: '20,184,166' },
+  Categories:          { color: '#F59E0B', rgb: '245,158,11' },
+  'Users & Roles':     { color: '#6366F1', rgb: '99,102,241' },
   Analytics:          { color: '#10B981', rgb: '16,185,129'  },
   'Reviews & Ratings':{ color: '#EC4899', rgb: '236,72,153'  },
   Notifications:      { color: '#14B8A6', rgb: '20,184,166'  },
@@ -109,8 +115,9 @@ const AdminSidebar = () => {
   const links = [
     { name: 'Dashboard',           path: '/dashboard/admin',              icon: LuLayoutDashboard, end: true },
     { name: 'Students',            path: '/dashboard/admin/students',     icon: LuUsers },
-    { name: 'Celebrity Teachers',  path: '/dashboard/admin/teachers',     icon: LuStar },
+    { name: 'Instructors',         path: '/dashboard/admin/teachers',     icon: LuStar },
     { name: 'Courses',             path: '/dashboard/admin/courses',      icon: LuBookOpen },
+    { name: 'Enrollments',         path: '/dashboard/admin/enrollments',  icon: LuGraduationCap },
     { name: 'Analytics',           path: '/dashboard/admin/analytics',    icon: LuChartBar },
     { name: 'Feature Hub',         path: '/dashboard/admin/feature-hub',  icon: LuSparkles },
     { name: 'Certificates',        path: '/dashboard/admin/certificates', icon: LuBadgeCheck },
@@ -119,10 +126,12 @@ const AdminSidebar = () => {
     { name: 'Reviews & Ratings',   path: '/dashboard/admin/reviews',      icon: LuMessageSquare },
     { name: 'Notifications',      path: '/dashboard/admin/notifications', icon: LuBell },
     { name: 'Billing',             path: '/dashboard/admin/billing',      icon: LuWalletCards },
+    { name: 'Categories',          path: '/dashboard/admin/categories',   icon: LuLayers },
     { name: 'Reports',             path: '/dashboard/admin/reports',      icon: LuFileChartLine },
     { name: 'Support',             path: '/dashboard/admin/support-tickets', icon: LuLifeBuoy },
     { name: 'Governance',          path: '/dashboard/admin/audit-logs',   icon: LuShieldCheck },
     { name: 'Activity',            path: '/dashboard/admin/activity-logs', icon: LuActivity },
+    { name: 'Users & Roles',       path: '/dashboard/admin/users-roles',  icon: LuUserCog },
     { name: 'Settings',            path: '/dashboard/admin/settings',     icon: LuSettings2 },
   ];
 
@@ -193,7 +202,7 @@ const AdminSidebar = () => {
           const accent = ACCENT[link.name] || { color: '#8B5CF6', rgb: '139,92,246' };
           const IconComponent = link.icon;
           const isStudentsLink = link.name === 'Students';
-          const isTeachersLink = link.name === 'Celebrity Teachers';
+          const isTeachersLink = link.name === 'Instructors';
           const isCoursesLink = link.name === 'Courses';
           const isGovernanceLink = link.name === 'Governance';
 

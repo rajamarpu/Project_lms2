@@ -44,6 +44,7 @@ const AppRouter = () => {
               <Route path="/dashboard/admin/students" element={<AdminStudents />} />
               <Route path="/dashboard/admin/courses" element={<AdminCourses />} />
               <Route path="/dashboard/admin/teachers" element={<AdminTeachers />} />
+              <Route path="/dashboard/admin/enrollments" element={<AdminAnalytics />} />
               <Route path="/dashboard/admin/analytics" element={<AdminAnalytics />} />
               <Route path="/dashboard/admin/feature-hub" element={<FeatureHub />} />
               <Route path="/dashboard/admin/reviews" element={<AdminReviews />} />
@@ -59,9 +60,11 @@ const AppRouter = () => {
               <Route path="/dashboard/admin/assignments" element={<Assignments />} />
               <Route path="/dashboard/admin/assessments" element={<Assessments />} />
               <Route path="/dashboard/admin/billing" element={<Billing />} />
+              <Route path="/dashboard/admin/categories" element={<AdminCourses />} />
               <Route path="/dashboard/admin/audit-logs" element={<AuditLogs />} />
               <Route path="/dashboard/admin/activity-logs" element={<ActivityLogs />} />
               <Route path="/dashboard/admin/support-tickets" element={<SupportTickets />} />
+              <Route path="/dashboard/admin/users-roles" element={<AdminStudents />} />
               <Route path="/dashboard/admin/reports" element={<Reports />} />
               <Route path="/dashboard/admin/profile" element={<AdminSettings />} />
 
@@ -71,6 +74,7 @@ const AppRouter = () => {
               <Route path="/teachers" element={<AdminTeachers />} />
               <Route path="/teachers/:teacherId" element={<AdminTeachers />} />
               <Route path="/courses" element={<AdminCourses />} />
+              <Route path="/enrollments" element={<AdminAnalytics />} />
               <Route path="/courses/:courseId" element={<AdminCourses />} />
               <Route path="/courses/:courseId/edit" element={<CourseWorkspace />} />
               <Route path="/course-builder" element={<AdminCourses />} />
@@ -83,9 +87,11 @@ const AppRouter = () => {
               <Route path="/settings" element={<AdminSettings />} />
               <Route path="/system-settings" element={<Navigate to="/dashboard/admin/analytics" replace />} />
               <Route path="/billing" element={<Billing />} />
+              <Route path="/categories" element={<AdminCourses />} />
               <Route path="/audit-logs" element={<AuditLogs />} />
               <Route path="/activity-logs" element={<ActivityLogs />} />
               <Route path="/support-tickets" element={<SupportTickets />} />
+              <Route path="/users-roles" element={<AdminStudents />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/profile" element={<AdminSettings />} />
             </Route>

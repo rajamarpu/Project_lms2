@@ -88,6 +88,7 @@ const profileRoutesV1 = require('./routes/v1/profile.routes');
 const uploadRoutesV1 = require('./routes/v1/upload.routes');
 const platformRoutesV1 = require('./routes/v1/platform.routes');
 const parityRoutesV1 = require('./routes/v1/parity.routes');
+const contentRoutesV1 = require('./routes/v1/content.routes');
 
 // Mount v1 Routes
 app.use('/api/v1/auth', authRoutesV1);
@@ -99,6 +100,7 @@ app.use('/api/v1/profile', profileRoutesV1);
 app.use('/api/v1/upload', uploadRoutesV1);
 app.use('/api/v1/platform', platformRoutesV1);
 app.use('/api/v1/features', parityRoutesV1);
+app.use('/api/v1/content', contentRoutesV1);
 
 // Maintain backward compatibility by aliasing /api to v1 routes
 app.use('/api/auth', authRoutesV1);
@@ -110,6 +112,7 @@ app.use('/api/profile', profileRoutesV1);
 app.use('/api/upload', uploadRoutesV1);
 app.use('/api/platform', platformRoutesV1);
 app.use('/api/features', parityRoutesV1);
+app.use('/api/content', contentRoutesV1);
 
 // Default Route
 app.get('/', (req, res) => {

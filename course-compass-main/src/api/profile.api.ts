@@ -3,6 +3,7 @@ import API from "./client";
 export interface UpdateProfileData {
   name: string;
   bio: string;
+  phone?: string;
 }
 
 export interface UpdatePasswordData {

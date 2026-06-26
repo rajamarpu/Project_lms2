@@ -1,71 +1,102 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { MainLayout } from "@/layouts/MainLayout";
-import Home from "@/pages/Home";
-import Courses from "@/pages/Courses/Courses";
-import CourseDetails from "@/pages/Courses/CourseDetails";
-import CreateCourse from "@/pages/Courses/CreateCourse";
-import Dashboard from "@/pages/Dashboard/Dashboard";
-import LearningPaths from "@/pages/Courses/LearningPaths";
-import LearningPathDetails from "@/pages/Courses/LearningPathDetails";
-import CoursePlayer from "@/pages/Courses/CoursePlayer";
-import NotFound from "@/pages/NotFound";
-import Login from "@/pages/Auth/Login";
-import Register from "@/pages/Auth/Register";
-import ForgotPassword from "@/pages/Auth/ForgotPassword";
-import ResetPassword from "@/pages/Auth/ResetPassword";
-import InstructorPortal from "@/pages/Portal/InstructorPortal";
-import ManageCourse from "@/pages/Portal/ManageCourse";
-import Profile from "@/pages/Profile/Profile";
-import CertificatesList from "@/pages/Certificate/CertificatesList";
 import { AuthProvider } from "@/store/AuthContext";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
-import { Features, Notifications, Settings, Support } from "@/pages/InfoPages";
-import LearningWork from "@/pages/Courses/LearningWork";
-import VerifyCertificate from "@/pages/Certificate/VerifyCertificate";
-import { AITutors, Community, CommunityTopic, LiveSessions, QuestionPractice } from "@/pages/FeaturePages";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+
+// Lazy-loaded pages for code splitting
+const Home = lazy(() => import("@/pages/Home"));
+const Login = lazy(() => import("@/pages/Auth/Login"));
+const Register = lazy(() => import("@/pages/Auth/Register"));
+const ForgotPassword = lazy(() => import("@/pages/Auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/Auth/ResetPassword"));
+const Courses = lazy(() => import("@/pages/Courses/Courses"));
+const CourseDetails = lazy(() => import("@/pages/Courses/CourseDetails"));
+const CoursePlayer = lazy(() => import("@/pages/Courses/CoursePlayer"));
+const Dashboard = lazy(() => import("@/pages/Dashboard/Dashboard"));
+const Profile = lazy(() => import("@/pages/Profile/Profile"));
+const CertificatesList = lazy(() => import("@/pages/Certificate/CertificatesList"));
+const VerifyCertificate = lazy(() => import("@/pages/Certificate/VerifyCertificate"));
+const LearningWork = lazy(() => import("@/pages/Courses/LearningWork"));
+const Wishlist = lazy(() => import("@/pages/Courses/Wishlist"));
+const Payments = lazy(() => import("@/pages/Courses/Payments"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const LearningPaths = lazy(() => import("@/pages/Courses/LearningPaths"));
+const LearningPathDetails = lazy(() => import("@/pages/Courses/LearningPathDetails"));
+const CreateCourse = lazy(() => import("@/pages/Courses/CreateCourse"));
+const InstructorPortal = lazy(() => import("@/pages/Portal/InstructorPortal"));
+const ManageCourse = lazy(() => import("@/pages/Portal/ManageCourse"));
+
+// Feature pages (lazy loaded)
+const InfoPages = lazy(() => import("@/pages/InfoPages").then(m => ({ default: m.Notifications })));
+const SettingsPage = lazy(() => import("@/pages/InfoPages").then(m => ({ default: m.Settings })));
+const SupportPage = lazy(() => import("@/pages/InfoPages").then(m => ({ default: m.Support })));
+const FeaturesPage = lazy(() => import("@/pages/InfoPages").then(m => ({ default: m.Features })));
+const FeaturePages = lazy(() => import("@/pages/FeaturePages").then(m => ({ default: m.Community })));
+
+// Loading fallback
+const PageLoader = () => (
+  <div className="flex min-h-[50vh] items-center justify-center">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  </div>
+);
+
+const LazyRoute = ({ children }: { children: React.ReactNode }) => (
+  <ErrorBoundary>
+    <Suspense fallback={<PageLoader />}>{children}</Suspense>
+  </ErrorBoundary>
+);
 
 export const AppRouter = () => {
   return (
     <AuthProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
-          {/* All pages share Navbar/Footer via MainLayout */}
           <Route element={<MainLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password/:id/:token" element={<ResetPassword />} />
-            <Route path="/courses" element={<Courses />} />
-            <Route path="/courses/:id" element={<CourseDetails />} />
-            <Route path="/features" element={<Features />} />
-            <Route path="/support" element={<Support />} />
-            <Route path="/learning-paths" element={<LearningPaths />} />
-            <Route path="/learning-paths/:id" element={<LearningPathDetails />} />
-            <Route path="/verify/:verificationId" element={<VerifyCertificate />} />
+            {/* Public routes */}
+            <Route path="/" element={<LazyRoute><Home /></LazyRoute>} />
+            <Route path="/login" element={<LazyRoute><Login /></LazyRoute>} />
+            <Route path="/register" element={<LazyRoute><Register /></LazyRoute>} />
+            <Route path="/forgot-password" element={<LazyRoute><ForgotPassword /></LazyRoute>} />
+            <Route path="/reset-password/:id/:token" element={<LazyRoute><ResetPassword /></LazyRoute>} />
+            <Route path="/courses" element={<LazyRoute><Courses /></LazyRoute>} />
+            <Route path="/courses/:id" element={<LazyRoute><CourseDetails /></LazyRoute>} />
+            <Route path="/features" element={<LazyRoute><FeaturesPage /></LazyRoute>} />
+            <Route path="/support" element={<LazyRoute><SupportPage /></LazyRoute>} />
+            <Route path="/learning-paths" element={<LazyRoute><LearningPaths /></LazyRoute>} />
+            <Route path="/learning-paths/:id" element={<LazyRoute><LearningPathDetails /></LazyRoute>} />
+            <Route path="/verify/:verificationId" element={<LazyRoute><VerifyCertificate /></LazyRoute>} />
+
+            {/* Protected learner routes */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/learn/:id" element={<CoursePlayer />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/certificates" element={<CertificatesList />} />
-              <Route path="/certificate/:courseId" element={<CertificatesList />} />
-              <Route path="/courses/:courseId/work" element={<LearningWork />} />
-              <Route path="/community" element={<Community />} />
-              <Route path="/community/:topicId" element={<CommunityTopic />} />
-              <Route path="/live-sessions" element={<LiveSessions />} />
-              <Route path="/ai-tutors" element={<AITutors />} />
-              <Route path="/questions" element={<QuestionPractice />} />
+              <Route path="/learn/:id" element={<LazyRoute><CoursePlayer /></LazyRoute>} />
+              <Route path="/dashboard" element={<LazyRoute><Dashboard /></LazyRoute>} />
+              <Route path="/profile" element={<LazyRoute><Profile /></LazyRoute>} />
+              <Route path="/notifications" element={<LazyRoute><InfoPages /></LazyRoute>} />
+              <Route path="/settings" element={<LazyRoute><SettingsPage /></LazyRoute>} />
+              <Route path="/certificates" element={<LazyRoute><CertificatesList /></LazyRoute>} />
+              <Route path="/certificate/:courseId" element={<LazyRoute><CertificatesList /></LazyRoute>} />
+              <Route path="/courses/:courseId/work" element={<LazyRoute><LearningWork /></LazyRoute>} />
+              <Route path="/wishlist" element={<LazyRoute><Wishlist /></LazyRoute>} />
+              <Route path="/payments" element={<LazyRoute><Payments /></LazyRoute>} />
+              <Route path="/community" element={<LazyRoute><FeaturePages /></LazyRoute>} />
+              <Route path="/community/:topicId" element={<LazyRoute><FeaturePages /></LazyRoute>} />
+              <Route path="/live-sessions" element={<LazyRoute><FeaturePages /></LazyRoute>} />
+              <Route path="/ai-tutors" element={<LazyRoute><FeaturePages /></LazyRoute>} />
+              <Route path="/questions" element={<LazyRoute><FeaturePages /></LazyRoute>} />
             </Route>
-            <Route element={<ProtectedRoute roles={["admin"]} />}>
-              <Route path="/courses/new" element={<CreateCourse />} />
-              <Route path="/portal" element={<InstructorPortal />} />
-              <Route path="/portal/courses/:id" element={<ManageCourse />} />
+
+            {/* Admin & Instructor routes */}
+            <Route element={<ProtectedRoute roles={["admin", "instructor"]} />}>
+              <Route path="/courses/new" element={<LazyRoute><CreateCourse /></LazyRoute>} />
+              <Route path="/portal" element={<LazyRoute><InstructorPortal /></LazyRoute>} />
+              <Route path="/portal/courses/:id" element={<LazyRoute><ManageCourse /></LazyRoute>} />
             </Route>
           </Route>
 
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<LazyRoute><NotFound /></LazyRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

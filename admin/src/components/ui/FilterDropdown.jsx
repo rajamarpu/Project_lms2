@@ -1,4 +1,3 @@
-import React from 'react';
 
 /**
  * FilterDropdown – generic dropdown used for filtering students.

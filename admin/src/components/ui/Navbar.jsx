@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { MdWbSunny, MdNightsStay } from 'react-icons/md';
 import { useTheme } from '../../context/ThemeProvider';
 import GlobalSearch from './navbar/GlobalSearch';

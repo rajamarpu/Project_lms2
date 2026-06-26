@@ -7,6 +7,7 @@ interface User {
   email: string;
   role: string;
   bio?: string;
+  phone?: string;
   avatar?: string;
   hoursLearned?: number;
   certificates?: number;

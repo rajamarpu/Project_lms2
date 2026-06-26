@@ -1,4 +1,3 @@
-import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MdCheckCircle, MdClose } from 'react-icons/md';
 

@@ -7,6 +7,17 @@ import { useTheme } from '../../context/ThemeProvider';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 const LEARNER_URL = import.meta.env.VITE_LEARNER_URL || 'http://localhost:3000';
 
+async function readJsonSafely(response) {
+  const text = await response.text();
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 const capabilities = [
   [LuUsers, 'Manage people', 'Approve and support learners and instructors.'],
   [LuGraduationCap, 'Operate learning', 'Publish courses, assessments, and credentials.'],
@@ -37,8 +48,10 @@ export default function AdminLogin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
       });
-      const payload = await response.json();
-      if (!response.ok || !payload.success) throw new Error(payload.error || 'Login failed.');
+      const payload = await readJsonSafely(response);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || `Login failed with status ${response.status}.`);
+      }
       if (payload.user?.role !== 'admin') throw new Error('This account does not have administrator access.');
       localStorage.setItem('role', 'admin');
       localStorage.setItem('lms_token', payload.token);

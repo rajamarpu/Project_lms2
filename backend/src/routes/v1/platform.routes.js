@@ -14,6 +14,7 @@ router.get('/preferences', controller.getPreferences);
 router.put('/preferences', controller.updatePreferences);
 router.get('/bookmarks', controller.getBookmarks);
 router.put('/bookmarks/:courseId', controller.toggleBookmark);
+router.get('/payments', controller.getPayments);
 router.put('/reviews/:courseId', controller.upsertReview);
 router.put('/admin/reviews/:id', authorize('admin'), controller.moderateReview);
 router.get('/courses/:courseId/assessments', controller.listAssessments);

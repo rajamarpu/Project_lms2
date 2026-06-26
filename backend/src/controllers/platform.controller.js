@@ -59,6 +59,26 @@ exports.getBookmarks = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+exports.getPayments = async (req, res, next) => {
+  try {
+    const { page, limit, skip, orderBy } = pageArgs(req.query);
+    const where = { userId: req.user.id, ...(req.query.status ? { status: String(req.query.status) } : {}) };
+    const [data, total] = await Promise.all([
+      prisma.billingRecord.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          course: { select: { id: true, title: true, category: true, thumbnail: true } },
+        },
+      }),
+      prisma.billingRecord.count({ where }),
+    ]);
+    paged(res, data, total, page, limit);
+  } catch (error) { next(error); }
+};
+
 exports.toggleBookmark = async (req, res, next) => {
   try {
     const key = { userId_courseId: { userId: req.user.id, courseId: req.params.courseId } };
@@ -360,6 +380,8 @@ exports.getAnalytics = async (req, res, next) => {
       usersByStatus, coursesByStatus, enrollments, completedEnrollments,
       assessmentAttempts, assignmentSubmissions, certificatesIssued,
       paidRevenue, openTickets, reviewSummary,
+      activeAiTutors, totalLiveSessions, upcomingLiveSessions,
+      activePracticeQuestions, openCommunityReports,
     ] = await Promise.all([
       prisma.user.groupBy({ by: ['role', 'status'], _count: { _all: true } }),
       prisma.course.groupBy({ by: ['status'], _count: { _all: true } }),
@@ -371,6 +393,11 @@ exports.getAnalytics = async (req, res, next) => {
       prisma.billingRecord.aggregate({ where: { status: 'paid', currency: 'INR' }, _sum: { amount: true }, _count: { _all: true } }),
       prisma.supportTicket.count({ where: { status: { in: ['open', 'assigned', 'waiting'] } } }),
       prisma.courseReview.aggregate({ where: { status: 'published' }, _avg: { rating: true }, _count: { _all: true } }),
+      prisma.aIPersonality.count({ where: { active: true } }),
+      prisma.liveSession.count(),
+      prisma.liveSession.count({ where: { startsAt: { gte: new Date() }, status: { in: ['scheduled', 'live'] } } }),
+      prisma.practiceQuestion.count({ where: { active: true } }),
+      prisma.communityReport.count({ where: { status: 'open' } }),
     ]);
     const userCount = (role, status) => usersByStatus
       .filter((row) => row.role === role && (!status || row.status === status))
@@ -382,6 +409,8 @@ exports.getAnalytics = async (req, res, next) => {
     const activeLearners = userCount('user', 'approved');
     const totalInstructors = userCount('instructor');
     const activeInstructors = userCount('instructor', 'approved');
+    const totalAdmins = userCount('admin');
+    const activeAdmins = userCount('admin', 'approved');
     const totalCourses = courseCount();
     const publishedCourses = courseCount('approved');
     const draftCourses = courseCount('draft');
@@ -393,6 +422,8 @@ exports.getAnalytics = async (req, res, next) => {
         activeLearners,
         totalInstructors,
         activeInstructors,
+        totalAdmins,
+        activeAdmins,
         totalCourses,
         publishedCourses,
         draftCourses,
@@ -410,6 +441,11 @@ exports.getAnalytics = async (req, res, next) => {
         openTickets,
         publishedReviews: reviewSummary._count._all,
         averageReviewRating: reviewSummary._avg.rating ? Number(reviewSummary._avg.rating.toFixed(2)) : 0,
+        activeAiTutors,
+        totalLiveSessions,
+        upcomingLiveSessions,
+        activePracticeQuestions,
+        openCommunityReports,
         generatedAt: new Date().toISOString(),
       },
     });

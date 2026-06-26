@@ -1,4 +1,3 @@
-import React from 'react';
 
 /**
  * HeroHeader – displays the main headline and subtitle for the Student Dashboard.

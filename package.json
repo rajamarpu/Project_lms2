@@ -2,7 +2,7 @@
   "name": "lms-root",
   "version": "1.0.0",
   "scripts": {
-    "dev": "node -e \"console.log('\\nLearner: http://localhost:3000/\\nAdmin:   http://localhost:3001/\\n')\" && concurrently -n learner,admin -c cyan,magenta \"npm run learner\" \"npm run admin\"",
+    "dev": "node -e \"console.log('\\nLearner app only: http://localhost:3000/\\nAdmin app only:   http://localhost:3001/\\n')\" && concurrently -n learner,admin -c cyan,magenta \"npm run learner\" \"npm run admin\"",
     "learner": "npm --prefix course-compass-main run dev",
     "backend": "npm --prefix backend run dev",
     "admin": "npm --prefix admin run dev",

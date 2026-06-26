@@ -61,7 +61,7 @@ const ConfirmModal = ({
         <button
           onClick={onConfirm}
           disabled={loading}
-          className="flex-1 py-2 px-4 text-sm rounded-lg bg-destructive text-white hover:bg-destructive/80 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+          className="flex-1 py-2 px-4 text-sm rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/80 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
           Delete

@@ -13,7 +13,7 @@ interface SidebarProps {
   showFilters: boolean;
 }
 
-const sortOptions = ["Most Popular", "Highest Rated", "Newest"];
+const sortOptions = ["Most Popular", "Highest Rated", "Newest", "Price: Low to High", "Price: High to Low"];
 
 export const AppSidebar = ({
   sortBy,

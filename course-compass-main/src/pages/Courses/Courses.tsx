@@ -1,43 +1,76 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, SlidersHorizontal, Plus } from "lucide-react";
+import {
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  TrendingUp,
+  BookOpen,
+  Award,
+  Clock3,
+  FilterX,
+  X,
+  DollarSign,
+  Star,
+} from "lucide-react";
 import { CourseCard, type CourseView } from "@/components/common/CourseCard";
 import { AppSidebar } from "@/components/ui/AppSidebar";
+import { CardSkeleton } from "@/components/common/LoadingSkeleton";
+import { EmptyState } from "@/components/common/EmptyState";
+import { useDebounce } from "@/hooks/use-debounce";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { courseApi } from "@/api/course.api";
-import { useAuth } from "@/store/AuthContext";
+import { platformApi } from "@/api/platform.api";
 
 const levels = ["Beginner", "Intermediate", "Advanced"] as const;
 
 const Courses = () => {
-  const { user } = useAuth();
   const [params] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") ?? "");
+  const debouncedQuery = useDebounce(query, 300);
   const [selLevels, setSelLevels] = useState<string[]>([]);
   const [selTopics, setSelTopics] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("Most Popular");
   const [showFilters, setShowFilters] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const [priceFilter, setPriceFilter] = useState<"all" | "free" | "paid">("all");
+  const [minRating, setMinRating] = useState(0);
   const navigate = useNavigate();
-  
   const [dbCourses, setDbCourses] = useState<CourseView[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => { setQuery(params.get("q") ?? ""); }, [params]);
+  useEffect(() => {
+    setQuery(params.get("q") ?? "");
+  }, [params]);
+
+  const fetchCourses = useCallback(async () => {
+    try {
+      const [coursesRes, bookmarksRes] = await Promise.allSettled([
+        courseApi.getAllCourses(),
+        platformApi.bookmarks(),
+      ]);
+
+      const bookmarks = bookmarksRes.status === "fulfilled" ? new Set((bookmarksRes.value.data.data || []).map((item: { courseId: string }) => String(item.courseId))) : new Set<string>();
+      const courses = coursesRes.status === "fulfilled" ? (coursesRes.value.data.data || []) : [];
+      setDbCourses(
+        courses.map((course: CourseView) => ({
+          ...course,
+          bookmarked: bookmarks.has(String(course.id)),
+        }))
+      );
+    } catch (err) {
+      console.error("Failed to fetch courses:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const res = await courseApi.getAllCourses();
-        setDbCourses(res.data.data);
-      } catch (err) {
-        console.error("Failed to fetch courses:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCourses();
-  }, []);
+    void fetchCourses();
+  }, [fetchCourses]);
+
+  useRefreshOnFocus(fetchCourses, [fetchCourses]);
 
   const topics = useMemo(() => {
     const allTopics = dbCourses.map((c) => c.category);
@@ -46,33 +79,41 @@ const Courses = () => {
 
   const filtered = useMemo(() => {
     const result = dbCourses.filter((c) => {
-      const instructorName = typeof c.instructor === 'object' ? c.instructor?.name : (c.celebrityTeacher || c.instructor || '');
-      if (query && !`${c.title} ${instructorName} ${c.category}`.toLowerCase().includes(query.toLowerCase())) return false;
+      const instructorName = typeof c.instructor === "object" ? c.instructor?.name : (c.celebrityTeacher || c.instructor || "");
+      if (debouncedQuery && !`${c.title} ${instructorName} ${c.category}`.toLowerCase().includes(debouncedQuery.toLowerCase())) return false;
       if (selLevels.length && !selLevels.includes(c.level)) return false;
       if (selTopics.length && !selTopics.includes(c.category)) return false;
+      if (priceFilter === "free" && c.price && c.price > 0) return false;
+      if (priceFilter === "paid" && (!c.price || c.price === 0)) return false;
+      if (minRating > 0 && (c.rating || 0) < minRating) return false;
       return true;
     });
 
     if (sortBy === "Highest Rated") {
-      result.sort((a, b) => b.rating - a.rating);
+      result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     } else if (sortBy === "Newest") {
-      result.sort((a, b) => (b.id > a.id ? 1 : -1));
+      result.sort((a, b) => (String(b.id) > String(a.id) ? 1 : -1));
+    } else if (sortBy === "Price: Low to High") {
+      result.sort((a, b) => (a.price || 0) - (b.price || 0));
+    } else if (sortBy === "Price: High to Low") {
+      result.sort((a, b) => (b.price || 0) - (a.price || 0));
     } else {
-      // Most Popular
       result.sort((a, b) => (b._count?.enrollments ?? 0) - (a._count?.enrollments ?? 0));
     }
 
     return result;
-  }, [dbCourses, query, selLevels, selTopics, sortBy]);
+  }, [dbCourses, debouncedQuery, selLevels, selTopics, sortBy, priceFilter, minRating]);
 
   const suggestions = useMemo(() => {
-    const value = query.trim().toLowerCase();
+    const value = debouncedQuery.trim().toLowerCase();
     if (!value) return [];
-    return dbCourses.filter((course) => {
-      const instructor = typeof course.instructor === "object" ? course.instructor?.name : course.instructor;
-      return `${course.title} ${course.category} ${instructor || course.celebrityTeacher || ""}`.toLowerCase().includes(value);
-    }).slice(0, 6);
-  }, [dbCourses, query]);
+    return dbCourses
+      .filter((course) => {
+        const instructor = typeof course.instructor === "object" ? course.instructor?.name : course.instructor;
+        return `${course.title} ${course.category} ${instructor || course.celebrityTeacher || ""}`.toLowerCase().includes(value);
+      })
+      .slice(0, 6);
+  }, [dbCourses, debouncedQuery]);
 
   const selectSuggestion = (course: CourseView) => {
     setSearchOpen(false);
@@ -100,31 +141,66 @@ const Courses = () => {
     }
   };
 
-  const clearAll = () => { setSelLevels([]); setSelTopics([]); setSortBy("Most Popular"); setQuery(""); };
+  const clearAll = useCallback(() => {
+    setSelLevels([]);
+    setSelTopics([]);
+    setSortBy("Most Popular");
+    setQuery("");
+    setPriceFilter("all");
+    setMinRating(0);
+  }, []);
+
+  const hasActiveFilters = selLevels.length > 0 || selTopics.length > 0 || query || priceFilter !== "all" || minRating > 0;
+
+  const averageRating = dbCourses.length
+    ? (dbCourses.reduce((sum, c) => sum + (c.rating || 0), 0) / dbCourses.length).toFixed(1)
+    : "0.0";
 
   return (
-    <div className="container py-10">
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display font-bold text-3xl md:text-4xl mb-2 text-foreground">Explore Courses</h1>
-          <p className="text-muted-foreground/80">Find your next learning adventure</p>
+    <div className="page-shell container py-6 sm:py-8 lg:py-10">
+      {/* Hero Section */}
+      <section className="mb-8 overflow-hidden rounded-[2rem] surface-card p-6 sm:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+          <div>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+              <Sparkles className="h-3.5 w-3.5" /> Explore the catalog
+            </div>
+            <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl md:text-5xl">
+              Discover the next skill that moves your career forward.
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+              Search the catalog, compare course quality, filter by level or topic, and open premium learning experiences built for practical progress.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+            {[
+              { icon: BookOpen, label: "Total courses", value: dbCourses.length },
+              { icon: TrendingUp, label: "Matching", value: filtered.length },
+              { icon: Award, label: "Categories", value: topics.length },
+              { icon: Clock3, label: "Avg rating", value: averageRating },
+            ].map(({ icon: Icon, label, value }) => (
+              <div key={label} className="rounded-2xl border border-border bg-background/55 p-3 sm:p-4">
+                <Icon className="h-5 w-5 text-primary" />
+                <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground sm:mt-3">{label}</p>
+                <p className="mt-1 text-xl font-bold sm:text-2xl">{value}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="flex items-center gap-3 p-4 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm"><span className="text-xl font-bold text-primary">{dbCourses.length}</span> <span className="text-sm text-muted-foreground">Total courses</span></div>
-        <div className="flex items-center gap-3 p-4 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm"><span className="text-xl font-bold text-secondary">{filtered.length}</span> <span className="text-sm text-muted-foreground">Matching</span></div>
-        <div className="flex items-center gap-3 p-4 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm"><span className="text-xl font-bold text-primary">{topics.length}</span> <span className="text-sm text-muted-foreground">Categories</span></div>
-        <div className="flex items-center gap-3 p-4 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm"><span className="text-xl font-bold text-secondary">{dbCourses.length > 0 ? (dbCourses.reduce((sum, c) => sum + (c.rating || 0), 0) / dbCourses.length).toFixed(1) : '0'}</span> <span className="text-sm text-muted-foreground">Avg rating</span></div>
-      </div>
-
-      <div className="flex gap-4 mb-8">
+      {/* Search Bar */}
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setSearchOpen(true); setActiveSuggestion(-1); }}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSearchOpen(true);
+              setActiveSuggestion(-1);
+            }}
             onFocus={() => setSearchOpen(true)}
             onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)}
             onKeyDown={handleSearchKeyDown}
@@ -133,11 +209,20 @@ const Courses = () => {
             aria-expanded={searchOpen && Boolean(query.trim())}
             aria-controls="course-search-suggestions"
             aria-activedescendant={activeSuggestion >= 0 ? `course-suggestion-${activeSuggestion}` : undefined}
-            placeholder="Search for AI, Python, Data Science…"
-            className="w-full bg-card/50 backdrop-blur-md border border-border rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all shadow-sm"
+            placeholder="Search for AI, design, leadership, or data skills..."
+            className="w-full rounded-2xl border border-border bg-card/85 py-3.5 pl-12 pr-4 shadow-[var(--shadow-card)] outline-none transition focus:border-primary/50 focus:ring-4 focus:ring-primary/10 sm:py-4"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
           {searchOpen && query.trim() && (
-            <div id="course-search-suggestions" role="listbox" className="absolute left-0 right-0 top-[calc(100%+8px)] z-40 overflow-hidden rounded-xl border border-border bg-popover shadow-[var(--shadow-overlay)]">
+            <div id="course-search-suggestions" role="listbox" className="absolute left-0 right-0 top-[calc(100%+10px)] z-40 overflow-hidden rounded-2xl border border-border bg-popover shadow-[var(--shadow-card)]">
               {suggestions.length ? suggestions.map((course, index) => {
                 const instructor = typeof course.instructor === "object" ? course.instructor?.name : course.instructor;
                 return (
@@ -150,8 +235,8 @@ const Courses = () => {
                     onMouseDown={() => selectSuggestion(course)}
                     className={`flex w-full items-center gap-3 border-b border-border/60 p-3 text-left last:border-0 ${activeSuggestion === index ? "bg-primary/10" : "hover:bg-muted"}`}
                   >
-                    <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-muted p-1">
-                      {course.thumbnail ? <img src={course.thumbnail} alt="" className="h-full w-full object-contain" /> : <Search className="m-auto h-full w-5 text-muted-foreground" />}
+                    <div className="h-12 w-16 shrink-0 overflow-hidden rounded-xl bg-muted p-1">
+                      {course.thumbnail ? <img src={course.thumbnail} alt="" className="h-full w-full object-cover" /> : <Search className="m-auto h-full w-5 text-muted-foreground" />}
                     </div>
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-foreground">{course.title}</span>
@@ -163,12 +248,34 @@ const Courses = () => {
             </div>
           )}
         </div>
-        <button onClick={() => setShowFilters(!showFilters)} className="lg:hidden btn-outline-teal !px-4 !py-3.5">
-          <SlidersHorizontal className="w-5 h-5" />
-        </button>
+
+        <div className="flex gap-2">
+          {/* Price Filter Pills */}
+          <div className="flex items-center gap-1 rounded-xl border border-border bg-card/65 px-1 py-1">
+            {(["all", "free", "paid"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setPriceFilter(option)}
+                className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                  priceFilter === option
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {option === "all" ? "All" : option === "free" ? "Free" : "Paid"}
+              </button>
+            ))}
+          </div>
+
+          <button onClick={() => setShowFilters(!showFilters)} className="lg:hidden btn-outline-teal !px-4 !py-3">
+            <SlidersHorizontal className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-[280px_1fr] gap-10">
+      {/* Content Area */}
+      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <AppSidebar
           sortBy={sortBy}
           setSortBy={setSortBy}
@@ -182,19 +289,59 @@ const Courses = () => {
           showFilters={showFilters}
         />
 
-        {/* Grid */}
         <div className="min-w-0">
-          {isLoading ? (
-             <div className="flex justify-center p-20">
-               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-             </div>
-          ) : filtered.length === 0 ? (
-            <div className="p-16 text-center border border-border/50 rounded-2xl bg-card/30 backdrop-blur-sm">
-              <p className="text-muted-foreground mb-6 text-lg">No courses found matching your filters.</p>
-              <button onClick={clearAll} className="btn-outline-teal">Clear filters</button>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Showing <span className="font-semibold text-foreground">{filtered.length}</span> of <span className="font-semibold text-foreground">{dbCourses.length}</span> courses
+            </p>
+            {hasActiveFilters && (
+              <button onClick={clearAll} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80">
+                <FilterX className="h-4 w-4" />
+                Clear all filters
+              </button>
+            )}
+          </div>
+
+          {/* Rating Filter */}
+          {minRating > 0 && (
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Min rating:</span>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setMinRating(i === minRating ? 0 : i + 1)}
+                    className="p-0.5"
+                  >
+                    <Star
+                      className={`h-4 w-4 ${i < minRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <button type="button" onClick={() => setMinRating(0)} className="text-xs text-muted-foreground hover:text-foreground">
+                <X className="h-3 w-3" />
+              </button>
             </div>
+          )}
+
+          {isLoading ? (
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={BookOpen}
+              title="No courses found"
+              description="Try adjusting your filters or search terms to find what you're looking for."
+              actionLabel="Clear filters"
+              onAction={clearAll}
+            />
           ) : (
-            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6 animate-fade-in">
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {filtered.map((c, i) => <CourseCard key={c.id} course={c} index={i} />)}
             </div>
           )}
@@ -205,4 +352,3 @@ const Courses = () => {
 };
 
 export default Courses;
-

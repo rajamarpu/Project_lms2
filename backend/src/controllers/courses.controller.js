@@ -95,8 +95,24 @@ exports.createCourse = async (req, res, next) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Only admins can create and generate courses' });
     }
-    const { title, description, category, level, thumbnail, celebrityTeacher, price, duration, rating, outcomes, xp, gradient, icon, status, generateAI } = req.body;
+    const { title, description, category, level, thumbnail, celebrityTeacher, price, duration, rating, outcomes, xp, gradient, icon, status, generateAI, instructorId } = req.body;
     const publishNow = status === 'approved';
+    const approvedInstructors = await prisma.user.findMany({
+      where: { role: 'instructor', status: 'approved' },
+      select: { id: true, name: true, _count: { select: { courses: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    let resolvedInstructorId = req.user.id;
+    if (instructorId) {
+      const selectedInstructor = approvedInstructors.find((item) => item.id === instructorId);
+      if (!selectedInstructor) return res.status(400).json({ success: false, error: 'Selected instructor is unavailable' });
+      resolvedInstructorId = selectedInstructor.id;
+    } else if (approvedInstructors.length) {
+      const minCourses = Math.min(...approvedInstructors.map((item) => item._count.courses));
+      const candidates = approvedInstructors.filter((item) => item._count.courses === minCourses);
+      resolvedInstructorId = candidates[Math.floor(Math.random() * candidates.length)].id;
+    }
+
     const course = await prisma.course.create({
       data: {
         title,
@@ -114,7 +130,7 @@ exports.createCourse = async (req, res, next) => {
         icon: icon || '🤖',
         status: publishNow ? 'approved' : 'draft',
         publishedAt: publishNow ? new Date() : null,
-        instructorId: req.user.id
+        instructorId: resolvedInstructorId
       }
     });
 
@@ -143,7 +159,7 @@ exports.createCourse = async (req, res, next) => {
 
     // Invalidate course cache
     await clearCache('cache:/api/courses');
-    await audit(req, publishNow ? 'course.create.publish' : 'course.create.draft', 'Course', course.id, null, { title: course.title, status: course.status });
+    await audit(req, publishNow ? 'course.create.publish' : 'course.create.draft', 'Course', course.id, null, { title: course.title, status: course.status, instructorId: resolvedInstructorId });
     res.status(201).json({ success: true, data: course });
   } catch (error) {
     next(error);
@@ -164,13 +180,17 @@ exports.updateCourse = async (req, res, next) => {
       return res.status(403).json({ success: false, error: 'Not authorized to update this course. Admin only.' });
     }
 
-    const allowedFields = ['title', 'description', 'category', 'level', 'thumbnail', 'celebrityTeacher', 'price', 'duration', 'rating', 'outcomes', 'xp', 'gradient', 'icon'];
+    const allowedFields = ['title', 'description', 'category', 'level', 'thumbnail', 'celebrityTeacher', 'price', 'duration', 'rating', 'outcomes', 'xp', 'gradient', 'icon', 'instructorId'];
     const dataToUpdate = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowedFields.includes(key)));
     if (dataToUpdate.price !== undefined) {
       dataToUpdate.price = parseFloat(dataToUpdate.price) || 0;
     }
     if (dataToUpdate.rating !== undefined) {
       dataToUpdate.rating = parseFloat(dataToUpdate.rating) || 4.5;
+    }
+    if (dataToUpdate.instructorId) {
+      const instructor = await prisma.user.findFirst({ where: { id: dataToUpdate.instructorId, role: 'instructor', status: 'approved' }, select: { id: true } });
+      if (!instructor) return res.status(400).json({ success: false, error: 'Selected instructor is unavailable' });
     }
 
     const updated = await prisma.course.update({

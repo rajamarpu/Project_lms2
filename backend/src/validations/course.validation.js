@@ -6,7 +6,7 @@ const courseSchema = z.object({
     description: z.string({ required_error: 'Description is required' }).max(1000, 'Description cannot exceed 1000 characters'),
     category: z.string({ required_error: 'Category is required' }),
     celebrityTeacher: z.string().optional()
-  })
+  }).passthrough()
 });
 
 const lessonSchema = z.object({

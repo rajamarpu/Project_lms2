@@ -1,9 +1,8 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { NOTIFICATION_CATEGORIES } from '../constants';
 import SettingsToggle from '../SettingsToggle';
 
-const NotificationsSection = ({ notifPrefs, onToggle, accent }) => (
+const NotificationsSection = ({ notifPrefs, onToggle }) => (
   <div className="space-y-4">
     <p className="text-sm admin-text-secondary mb-2">
       Choose which alerts you receive across email and in-app channels.

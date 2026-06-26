@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MdDateRange } from 'react-icons/md';
 import {
   DATE_PRESETS,

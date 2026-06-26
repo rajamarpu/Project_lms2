@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import SettingsHero from '../../../components/admin/settings/SettingsHero';
@@ -58,8 +58,10 @@ const Settings = () => {
 
   useEffect(() => {
     if (tabFromUrl && VALID_TABS.has(tabFromUrl)) {
-      setActiveTab(tabFromUrl);
+      const id = window.requestAnimationFrame(() => setActiveTab(tabFromUrl));
+      return () => window.cancelAnimationFrame(id);
     }
+    return undefined;
   }, [tabFromUrl]);
 
   const showToast = useCallback((message) => {

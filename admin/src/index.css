@@ -292,15 +292,23 @@ body {
   }
 
   .stat-widget {
-    @apply relative flex min-h-[172px] flex-col overflow-hidden;
+    @apply relative flex min-h-[190px] flex-col overflow-hidden rounded-2xl text-left;
     isolation: isolate;
     --metric-start: #4f6bed;
     --metric-end: #6f42d9;
     background:
-      radial-gradient(circle at 110% -15%, rgba(255, 255, 255, 0.25), transparent 38%),
-      linear-gradient(135deg, var(--metric-start), var(--metric-end));
+      radial-gradient(circle at 112% -10%, rgba(255, 255, 255, 0.26), transparent 36%),
+      linear-gradient(135deg, color-mix(in srgb, var(--metric-start) 92%, #0f172a), color-mix(in srgb, var(--metric-end) 88%, #111827));
     border-color: rgba(255, 255, 255, 0.16);
     box-shadow: 0 12px 28px color-mix(in srgb, var(--metric-end) 24%, rgba(15, 23, 42, 0.2));
+  }
+
+  button.stat-widget {
+    @apply w-full cursor-pointer appearance-none;
+  }
+
+  .stat-widget-clickable {
+    transform-origin: center;
   }
 
   .stat-widget::after {
@@ -309,7 +317,25 @@ body {
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background: linear-gradient(120deg, transparent 18%, rgba(255, 255, 255, 0.08), transparent 68%);
+    background:
+      linear-gradient(120deg, transparent 18%, rgba(255, 255, 255, 0.08), transparent 68%),
+      radial-gradient(circle at 86% 32%, rgba(255, 255, 255, 0.1), transparent 0 18%),
+      radial-gradient(circle at 78% 74%, rgba(255, 255, 255, 0.08), transparent 0 12%);
+  }
+
+  .stat-widget::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 30%),
+      radial-gradient(circle at 78% 28%, rgba(255, 255, 255, 0.18), transparent 32%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%);
+    opacity: 0.72;
+    transition: opacity 180ms ease, transform 180ms ease;
   }
 
   .stat-widget:hover {
@@ -317,14 +343,28 @@ body {
     box-shadow: 0 20px 44px color-mix(in srgb, var(--metric-end) 34%, rgba(2, 6, 23, 0.28));
   }
 
+  .stat-widget-clickable:hover::before {
+    opacity: 0.95;
+    transform: scale(1.015);
+  }
+
+  .stat-widget-clickable:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--metric-end) 40%, white);
+    outline-offset: 3px;
+  }
+
+  .stat-widget-clickable:active {
+    transform: translateY(-1px) scale(0.995);
+  }
+
   .stat-accent-line {
-    @apply absolute bottom-[46px] left-5 h-[2px] w-[62%] rounded-full;
+    @apply absolute bottom-[52px] left-5 h-[2px] w-[58%] rounded-full;
     background: linear-gradient(90deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.18));
   }
 
   .stat-value {
-    @apply mt-2 truncate text-[1.85rem] font-bold leading-none tracking-[-0.035em];
-    color: #ffffff;
+    @apply mt-5 truncate text-[2.05rem] font-bold leading-none tracking-normal;
+    color: var(--admin-text-primary);
   }
 
   .stat-icon {
@@ -336,9 +376,11 @@ body {
   }
 
   .stat-delta {
-    @apply inline-flex items-center gap-1 rounded-full px-2 py-1 font-semibold;
-    color: var(--success);
-    background: color-mix(in srgb, var(--success) 12%, transparent);
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold;
+    color: rgba(255, 255, 255, 0.95);
+    background: rgba(15, 23, 42, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(10px);
   }
 
   .stat-meta {
@@ -347,13 +389,23 @@ body {
 
   .stat-detail {
     @apply truncate leading-5;
-    color: rgba(255, 255, 255, 0.82);
+    color: rgba(255, 255, 255, 0.84);
   }
 
   .stat-source {
-    @apply mt-auto flex items-center gap-2 border-t pt-3 text-[10px] font-semibold uppercase tracking-[0.09em];
-    border-color: rgba(255, 255, 255, 0.18);
+    @apply mt-auto flex items-center gap-2 border-t pt-3 text-[11px] font-medium tracking-[0.02em];
+    border-color: rgba(255, 255, 255, 0.14);
     color: rgba(255, 255, 255, 0.72);
+  }
+
+  .stat-widget-clickable .stat-source::after {
+    content: 'Open';
+    margin-left: auto;
+    border-radius: 999px;
+    padding: 0.2rem 0.48rem;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.18);
   }
 
   .stat-source > span {
@@ -364,6 +416,10 @@ body {
 
   .metric-grid {
     @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+  }
+
+  .dashboard-primary-metrics {
+    @apply lg:grid-cols-3 xl:grid-cols-3;
   }
 
   .metrics-timestamp {
@@ -378,10 +434,22 @@ body {
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 12%, transparent);
   }
 
+  .tone-blue {
+    --accent: #2563eb;
+    --metric-start: #2764ff;
+    --metric-end: #1746b8;
+  }
+
+  .tone-red {
+    --accent: #ef4444;
+    --metric-start: #f04b53;
+    --metric-end: #b82032;
+  }
+
   .tone-green {
     --accent: #10b981;
-    --metric-start: #19bfa6;
-    --metric-end: #1689df;
+    --metric-start: #13b981;
+    --metric-end: #087b57;
   }
 
   .tone-purple {
@@ -403,7 +471,8 @@ body {
   }
 
   .stat-widget .admin-label {
-    color: rgba(255, 255, 255, 0.76);
+    @apply text-sm font-medium normal-case tracking-normal;
+    color: rgba(255, 255, 255, 0.92);
   }
 
   .admin-table {
@@ -758,20 +827,88 @@ main,
     box-shadow 0.25s ease;
 }
 
-/* Argon-inspired metric palette: brighter on light canvases, deeper in dark mode. */
+/* Metric cards keep readable text in both themes and use color as accent, not as data. */
 html.light .stat-widget {
   --metric-start: #5e72e4;
   --metric-end: #825ee4;
-  box-shadow: 0 12px 26px color-mix(in srgb, var(--metric-end) 20%, rgba(15, 23, 42, 0.12));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--metric-start) 8%, transparent), transparent 42%),
+    #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
 }
 
-html.light .stat-widget.tone-green { --metric-start: #27c7c4; --metric-end: #2684ff; }
+html.light .stat-widget.tone-blue { --metric-start: #2563eb; --metric-end: #1d4ed8; }
+html.light .stat-widget.tone-green { --metric-start: #16a34a; --metric-end: #15803d; }
+html.light .stat-widget.tone-red { --metric-start: #ef4444; --metric-end: #b91c1c; }
 html.light .stat-widget.tone-purple { --metric-start: #6d67e4; --metric-end: #8f5bd7; }
 html.light .stat-widget.tone-orange { --metric-start: #f15368; --metric-end: #f26b45; }
 html.light .stat-widget.tone-gray { --metric-start: #26335f; --metric-end: #10193c; }
 
+html.light .stat-widget::before,
+html.light .stat-widget::after {
+  opacity: 0;
+}
+
+html.light .stat-value,
+html.light .stat-widget .admin-label {
+  color: #0f172a;
+}
+
+html.light .stat-widget .admin-label {
+  @apply normal-case tracking-normal;
+}
+
+html.light .stat-detail,
+html.light .stat-source {
+  color: #475569;
+}
+
+html.light .stat-delta {
+  color: #0f172a;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+html.light .stat-accent-line {
+  background: linear-gradient(90deg, var(--metric-start), color-mix(in srgb, var(--metric-end) 18%, transparent));
+}
+
+html.light .stat-icon {
+  color: var(--metric-start);
+  background: color-mix(in srgb, var(--metric-start) 10%, white);
+  border-color: color-mix(in srgb, var(--metric-start) 20%, #e2e8f0);
+}
+
+html.light .stat-source > span {
+  background: var(--metric-start);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--metric-start) 14%, transparent);
+}
+
+html.light .stat-widget-clickable .stat-source::after {
+  color: #0f172a;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
 html[data-theme='dark'] .stat-widget { --metric-start: #4055c8; --metric-end: #6534ad; }
-html[data-theme='dark'] .stat-widget.tone-green { --metric-start: #128f91; --metric-end: #1764bd; }
+html[data-theme='dark'] .stat-widget.tone-blue { --metric-start: #2764ff; --metric-end: #1746b8; }
+html[data-theme='dark'] .stat-widget.tone-green { --metric-start: #13b981; --metric-end: #087b57; }
+html[data-theme='dark'] .stat-widget.tone-red { --metric-start: #f04b53; --metric-end: #b82032; }
 html[data-theme='dark'] .stat-widget.tone-purple { --metric-start: #5945ba; --metric-end: #713ba5; }
 html[data-theme='dark'] .stat-widget.tone-orange { --metric-start: #bf3f55; --metric-end: #c85035; }
 html[data-theme='dark'] .stat-widget.tone-gray { --metric-start: #1c294e; --metric-end: #0a1029; }
+
+html:not(.light) .stat-value,
+html:not(.light) .stat-widget .admin-label {
+  color: #ffffff;
+}
+
+html:not(.light) .stat-detail {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+html:not(.light) .stat-source {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.72);
+}

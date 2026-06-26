@@ -47,7 +47,7 @@ const ConfirmModal = ({ label, onConfirm, onCancel, loading }: {
       <div className="flex gap-3">
         <button onClick={onCancel} className="flex-1 py-2 text-sm rounded-lg border border-border hover:bg-muted/40 transition-colors">Cancel</button>
         <button onClick={onConfirm} disabled={loading}
-          className="flex-1 py-2 text-sm rounded-lg bg-destructive text-white hover:bg-destructive/80 flex items-center justify-center gap-2 disabled:opacity-60">
+          className="flex-1 py-2 text-sm rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/80 flex items-center justify-center gap-2 disabled:opacity-60">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} Delete
         </button>
       </div>
@@ -357,7 +357,7 @@ const ManageCourse = () => {
                   {generatingAI ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Sparkles className="w-4 h-4 text-white fill-white/20" />
+                    <Sparkles className="w-4 h-4 text-primary-foreground fill-primary-foreground/20" />
                   )}
                   Generate Syllabus with AI
                 </button>

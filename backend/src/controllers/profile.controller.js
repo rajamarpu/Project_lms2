@@ -6,11 +6,15 @@ const { prisma } = require('../config/db');
 // @access  Private
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { name, bio } = req.body;
+    const { name, bio, phone } = req.body;
 
     const user = await prisma.user.update({
       where: { id: req.user.id },
-      data: { name, bio }
+      data: {
+        ...(name !== undefined ? { name } : {}),
+        ...(bio !== undefined ? { bio } : {}),
+        ...(phone !== undefined ? { phone: String(phone).trim() || null } : {}),
+      }
     });
 
     res.status(200).json({
@@ -21,6 +25,7 @@ exports.updateProfile = async (req, res, next) => {
         email: user.email,
         role: user.role,
         bio: user.bio,
+        phone: user.phone,
       }
     });
   } catch (error) {

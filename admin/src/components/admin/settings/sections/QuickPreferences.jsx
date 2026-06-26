@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { MdDarkMode, MdLanguage, MdSchedule, MdPalette } from 'react-icons/md';
 import { useTheme } from '../../../../context/ThemeProvider';

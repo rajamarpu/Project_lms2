@@ -1,8 +1,21 @@
-import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useParams, Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
-  ArrowLeft, Star, Clock, BookOpen, Users, Award, CheckCircle2, PlayCircle,
-  Heart, HeartOff, Loader2
+  ArrowLeft,
+  Star,
+  Clock,
+  BookOpen,
+  Users,
+  Award,
+  CheckCircle2,
+  PlayCircle,
+  Heart,
+  HeartOff,
+  Loader2,
+  Sparkles,
+  Target,
+  BadgeCheck,
+  Layers3,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -19,105 +32,143 @@ import { useAuth } from "@/store/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { platformApi } from "@/api/platform.api";
 import axios from "axios";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 
 const tabs = ["About", "Outcomes", "Curriculum", "Instructors", "Reviews"] as const;
 type Tab = typeof tabs[number];
 type Lesson = { id: string; title: string; content?: string; order: number };
 type Enrollment = { courseId: string; mentor?: string };
 type CourseDetail = {
-  id: string; title: string; description: string; category: string; level: string; thumbnail?: string;
-  rating: number; duration?: string; price: number; outcomes: string[]; lessons: Lesson[];
-  celebrityTeacher?: string; instructor?: { name: string }; instructors?: Array<{ name: string; role: string; avatar: string }>;
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  level: string;
+  thumbnail?: string;
+  rating: number;
+  duration?: string;
+  price: number;
+  outcomes: string[];
+  lessons: Lesson[];
+  celebrityTeacher?: string;
+  instructor?: { name: string };
+  instructors?: Array<{ name: string; role: string; avatar: string }>;
   _count?: { enrollments: number };
 };
 type Review = { id: string; rating: number; comment?: string; createdAt: string; user: { name: string; avatar?: string } };
 
-// ---------------------------------------------------------------------------
-// Wishlist helpers (localStorage)
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
+const mentorOptions = ["Virat Kohli", "Salman Khan", "Narendra Modi", "Sachin Tendulkar", "Hardik Pandya", "Virtual Mentor"];
 
 const CourseDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
   const isInstructorOrAdmin = user?.role === "admin";
   const { toast } = useToast();
+  const autoEnrollTriggered = useRef(false);
 
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [tab, setTab] = useState<Tab>("About");
-
-  // Enroll state
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrollLoading, setEnrollLoading] = useState(false);
-  
-  // Mentor Selection State
   const [mentorSelectionOpen, setMentorSelectionOpen] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState("");
-  const celebrities = ["Virat Kohli", "Salman Khan", "Narendra Modi", "Sachin Tendulkar", "Hardik Pandya", "Virtual Mentor"];
-
-  // Wishlist state
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
 
-  // -------------------------------------------------------------------------
-  // Fetch course
-  // -------------------------------------------------------------------------
-  useEffect(() => {
-    const fetchCourse = async () => {
-      try {
-        const res = await courseApi.getCourseById(id!);
-        setCourse(res.data.data);
-      } catch (err) {
-        setError(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (id) fetchCourse();
+  const loadCourse = useCallback(async () => {
+    if (!id) return;
+    setIsLoading(true);
+    try {
+      const res = await courseApi.getCourseById(id);
+      setCourse(res.data.data);
+      setError(false);
+    } catch {
+      setError(true);
+    } finally {
+      setIsLoading(false);
+    }
   }, [id]);
 
-  useEffect(() => { if (id) platformApi.reviews(id).then(({ data }) => setReviews(data.data)).catch(() => {}); }, [id]);
-
-  // -------------------------------------------------------------------------
-  // Check enrollment & wishlist status once course + auth are ready
-  // -------------------------------------------------------------------------
-  useEffect(() => {
+  const loadReviews = useCallback(async () => {
     if (!id) return;
+    try {
+      const { data } = await platformApi.reviews(id);
+      setReviews(data.data);
+    } catch {
+      // ignore transient review load failures
+    }
+  }, [id]);
 
-    // Enrollment (backend)
-    if (isAuthenticated) {
-      platformApi.bookmarks().then(({ data }) => setIsWishlisted(data.data.some((bookmark: { courseId: string }) => bookmark.courseId === id))).catch(() => {});
-      courseApi
-        .getMyEnrollments()
-        .then((res) => {
-          const enrollment = res.data.data?.find((e: Enrollment) => e.courseId === id);
-          if (enrollment) {
-            setIsEnrolled(true);
-            if (enrollment.mentor) {
-               setCourse((prev) => prev ? ({
-                  ...prev,
-                  instructors: [{
-                    name: enrollment.mentor,
-                    role: "Lead Instructor",
-                    avatar: "https://ui-avatars.com/api/?name=" + enrollment.mentor
-                  }]
-               }) : prev);
-            }
-          }
-        })
-        .catch(() => {});
+  const loadEnrollmentState = useCallback(async () => {
+    if (!id || !isAuthenticated) return;
+
+    try {
+      const [bookmarkRes, enrollmentRes] = await Promise.all([
+        platformApi.bookmarks(),
+        courseApi.getMyEnrollments(),
+      ]);
+
+      setIsWishlisted(bookmarkRes.data.data.some((bookmark: { courseId: string }) => bookmark.courseId === id));
+
+      const enrollment = enrollmentRes.data.data?.find((e: Enrollment) => e.courseId === id);
+      setIsEnrolled(Boolean(enrollment));
+      if (enrollment?.mentor) {
+        setCourse((prev) => prev ? ({
+          ...prev,
+          instructors: [{
+            name: enrollment.mentor!,
+            role: "Lead Instructor",
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(enrollment.mentor!)}`,
+          }],
+        }) : prev);
+      }
+    } catch {
+      // ignore transient enrollment load failures
     }
   }, [id, isAuthenticated]);
 
-  // -------------------------------------------------------------------------
-  // Enroll handler
-  // -------------------------------------------------------------------------
+  useEffect(() => {
+    void loadCourse();
+  }, [loadCourse]);
+
+  useEffect(() => {
+    void loadReviews();
+  }, [loadReviews]);
+
+  useEffect(() => {
+    void loadEnrollmentState();
+  }, [loadEnrollmentState]);
+
+  useRefreshOnFocus(() => {
+    void loadCourse();
+    void loadReviews();
+    void loadEnrollmentState();
+  }, [loadCourse, loadReviews, loadEnrollmentState]);
+
+  const learningObjectives = useMemo(() => {
+    if (!course) return [];
+    return (course.outcomes?.length ? course.outcomes : [
+      "Build confidence through guided lessons and practical exercises",
+      "Apply concepts to realistic learner workflows and projects",
+      "Track progress with milestones that keep momentum visible",
+    ]).slice(0, 6);
+  }, [course]);
+
+  const prerequisites = useMemo(() => {
+    if (!course) return [];
+    return [
+      `Comfort with ${course.category?.toLowerCase() || "digital learning"} basics`,
+      "A willingness to practice with guided projects",
+      "Roughly 4 to 6 focused hours each week",
+    ];
+  }, [course]);
+
   const handleEnrollClick = () => {
     if (!isAuthenticated) {
       toast({
@@ -137,42 +188,40 @@ const CourseDetails = () => {
     setMentorSelectionOpen(true);
   };
 
-  const proceedAfterMentorSelection = () => {
-    setMentorSelectionOpen(false);
-    if (course.price && course.price > 0) {
-      toast({ title: "Purchase unavailable", description: "Paid enrollment is disabled until a verified payment provider is configured.", variant: "destructive" });
-      return;
-    }
-    handleEnroll();
-  };
-
   const handleEnroll = async () => {
-
     setEnrollLoading(true);
     try {
       await courseApi.enrollInCourse(id!, { mentor: selectedMentor });
       setIsEnrolled(true);
       if (selectedMentor) {
         setCourse((prev) => prev ? ({
-            ...prev,
-            instructors: [{
-              name: selectedMentor,
-              role: "Lead Instructor",
-              avatar: "https://ui-avatars.com/api/?name=" + selectedMentor
-            }]
+          ...prev,
+          instructors: [{
+            name: selectedMentor,
+            role: "Lead Instructor",
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMentor)}`,
+          }],
         }) : prev);
       }
       toast({
-        title: "Enrolled successfully! 🎉",
+        title: "Enrolled successfully!",
         description: "You are now enrolled. Head to your dashboard to start learning.",
       });
     } catch (err: unknown) {
-      const msg =
-        (axios.isAxiosError(err) && err.response?.data?.error) || "Failed to enroll. Please try again.";
+      const msg = (axios.isAxiosError(err) && err.response?.data?.error) || "Failed to enroll. Please try again.";
       toast({ title: "Enrollment failed", description: msg, variant: "destructive" });
     } finally {
       setEnrollLoading(false);
     }
+  };
+
+  const proceedAfterMentorSelection = () => {
+    setMentorSelectionOpen(false);
+    if (course?.price && course.price > 0) {
+      toast({ title: "Purchase unavailable", description: "Paid enrollment is disabled until a verified payment provider is configured.", variant: "destructive" });
+      return;
+    }
+    handleEnroll();
   };
 
   const handleUnenroll = async () => {
@@ -185,7 +234,7 @@ const CourseDetails = () => {
       });
       setIsEnrolled(false);
       navigate("/dashboard");
-    } catch (err) {
+    } catch {
       toast({
         title: "Action failed",
         description: "Could not unenroll from the course.",
@@ -196,9 +245,6 @@ const CourseDetails = () => {
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Wishlist handler
-  // -------------------------------------------------------------------------
   const handleWishlist = async () => {
     if (!isAuthenticated) {
       toast({
@@ -222,6 +268,16 @@ const CourseDetails = () => {
     }
   };
 
+  useEffect(() => {
+    const shouldAutoEnroll = searchParams.get("enroll") === "1";
+    if (!shouldAutoEnroll || autoEnrollTriggered.current || !course || isLoading) return;
+
+    if (isAuthenticated && !isEnrolled && !isInstructorOrAdmin) {
+      autoEnrollTriggered.current = true;
+      handleEnrollClick();
+    }
+  }, [course, handleEnrollClick, isAuthenticated, isEnrolled, isInstructorOrAdmin, isLoading, searchParams]);
+
   const submitReview = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
@@ -230,118 +286,109 @@ const CourseDetails = () => {
       setReviews(data.data);
       setReviewForm({ rating: 5, comment: "" });
       toast({ title: "Review saved" });
-    } catch (error) {
+    } catch {
       toast({ title: "Review unavailable", description: "Only enrolled learners can review this course.", variant: "destructive" });
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
-  if (isLoading)
+  if (isLoading) {
     return (
       <div className="p-20 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
       </div>
     );
+  }
+
   if (error || !course) return <Navigate to="/courses" replace />;
 
   return (
-    <div>
-      {/* Hero */}
+    <div className="page-shell">
       <div className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0">
-          <img
-            src={course.thumbnail}
-            alt=""
-            className="w-full h-full object-cover opacity-20 blur-2xl"
-          />
+          <img src={course.thumbnail} alt="" className="h-full w-full object-cover opacity-20 blur-2xl" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
         </div>
         <div className="container relative py-10">
-          <Link
-            to="/courses"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to courses
+          <Link to="/courses" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
+            <ArrowLeft className="h-4 w-4" /> Back to courses
           </Link>
 
-          <div className="grid lg:grid-cols-[1fr_400px] gap-10 items-start">
+          <div className="grid items-start gap-10 lg:grid-cols-[1fr_400px]">
             <div>
-              <span className="inline-block text-xs font-mono px-2.5 py-1 rounded-md bg-secondary/20 text-secondary border border-secondary/40 mb-4">
+              <span className="mb-4 inline-block rounded-md border border-secondary/40 bg-secondary/20 px-2.5 py-1 text-xs font-mono text-secondary">
                 {course.category} · {course.level}
               </span>
-              <h1 className="font-display font-bold text-3xl md:text-5xl mb-4">
-                {course.title}
-              </h1>
-              <p className="text-lg text-muted-foreground mb-6">
-                {course.description}
-              </p>
+              <h1 className="mb-4 font-display text-3xl font-bold md:text-5xl">{course.title}</h1>
+              <p className="mb-6 text-lg text-muted-foreground">{course.description}</p>
 
               <div className="flex flex-wrap gap-4 text-sm">
                 <span className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-primary fill-primary" /> {course.rating} rating
+                  <Star className="h-4 w-4 fill-primary text-primary" /> {course.rating} rating
                 </span>
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Users className="w-4 h-4" /> {course._count?.enrollments || 0} enrolled
+                  <Users className="h-4 w-4" /> {course._count?.enrollments || 0} enrolled
                 </span>
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Clock className="w-4 h-4" /> {course.duration || 'Self-paced'}
+                  <Clock className="h-4 w-4" /> {course.duration || "Self-paced"}
                 </span>
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <BookOpen className="w-4 h-4" /> {Array.isArray(course.lessons) ? course.lessons.length : course.lessons || 0} lessons
+                  <BookOpen className="h-4 w-4" /> {Array.isArray(course.lessons) ? course.lessons.length : course.lessons || 0} lessons
                 </span>
+              </div>
+
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl border border-border bg-background/50 p-4">
+                  <Target className="h-5 w-5 text-primary" />
+                  <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">Completion time</p>
+                  <p className="mt-1 font-semibold">{course.duration || "Self-paced"}</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-background/50 p-4">
+                  <Layers3 className="h-5 w-5 text-secondary" />
+                  <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">Roadmap</p>
+                  <p className="mt-1 font-semibold">{Array.isArray(course.lessons) ? course.lessons.length : 0} structured lessons</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-background/50 p-4">
+                  <BadgeCheck className="h-5 w-5 text-primary" />
+                  <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">Outcomes</p>
+                  <p className="mt-1 font-semibold">{learningObjectives.length} measurable goals</p>
+                </div>
               </div>
             </div>
 
-            {/* ---- Enrollment Card ---- */}
             <div className="glass-card overflow-hidden lg:sticky lg:top-20">
               <div className="relative aspect-video">
-                <img
-                  src={course.thumbnail}
-                  alt={course.title}
-                  className="w-full h-full object-cover"
-                />
+                <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
                 <div className="absolute inset-0 flex items-center justify-center bg-background/30">
-                  <PlayCircle className="w-16 h-16 text-primary drop-shadow-lg" />
+                  <PlayCircle className="h-16 w-16 text-primary drop-shadow-lg" />
                 </div>
               </div>
               <div className="p-6">
-                <p className="text-3xl font-display font-bold mb-4">
+                <p className="mb-4 text-3xl font-display font-bold">
                   {course.price && course.price > 0 ? `$${course.price.toFixed(2)}` : "Free"}
-                  {course.price && course.price > 0 && (
-                    <span className="text-sm text-muted-foreground line-through font-normal ml-2">
-                      ${(course.price * 1.5).toFixed(2)}
-                    </span>
-                  )}
-                  {!course.price && (
-                    <span className="text-sm text-muted-foreground line-through font-normal ml-2">
-                      $49.99
-                    </span>
+                  {course.price && course.price > 0 ? (
+                    <span className="ml-2 text-sm font-normal text-muted-foreground line-through">${(course.price * 1.5).toFixed(2)}</span>
+                  ) : (
+                    <span className="ml-2 text-sm font-normal text-muted-foreground line-through">$49.99</span>
                   )}
                 </p>
 
-                {/* Show enroll/wishlist only for students (role === 'user' or not logged in) */}
                 {isInstructorOrAdmin ? (
-                  <div className="rounded-lg border border-secondary/30 bg-secondary/10 px-4 py-3 text-sm text-secondary text-center mb-4">
-                    {user?.role === "admin"
-                      ? "You are an admin. Enroll options are for students only."
-                      : "Admins cannot enroll in courses."}
+                  <div className="mb-4 rounded-lg border border-secondary/30 bg-secondary/10 px-4 py-3 text-center text-sm text-secondary">
+                    {user?.role === "admin" ? "You are an admin. Enroll options are for students only." : "Admins cannot enroll in courses."}
                   </div>
                 ) : (
                   <>
-                    {/* Enroll Button */}
                     <button
                       id="enroll-btn"
-                      className="btn-primary w-full mb-3 flex items-center justify-center gap-2 disabled:opacity-60"
+                      className="btn-primary mb-3 flex w-full items-center justify-center gap-2 disabled:opacity-60"
                       onClick={handleEnrollClick}
                       disabled={enrollLoading}
                     >
                       {enrollLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : isEnrolled ? (
                         <>
-                          <PlayCircle className="w-4 h-4" /> Go to Course Player
+                          <PlayCircle className="h-4 w-4" /> Go to Course Player
                         </>
                       ) : (
                         "Enroll Now"
@@ -352,33 +399,31 @@ const CourseDetails = () => {
                       <button
                         onClick={handleUnenroll}
                         disabled={enrollLoading}
-                        className="w-full py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors flex items-center justify-center gap-2 mb-3 border border-transparent hover:border-destructive/20"
+                        className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg border border-transparent py-2 text-sm text-destructive transition-colors hover:border-destructive/20 hover:bg-destructive/10"
                       >
                         Drop Course
                       </button>
                     )}
 
-                    {/* Wishlist Button */}
                     <button
                       id="wishlist-btn"
-                      className="btn-outline-teal w-full flex items-center justify-center gap-2 disabled:opacity-60"
+                      className="btn-outline-teal flex w-full items-center justify-center gap-2 disabled:opacity-60"
                       onClick={handleWishlist}
                       disabled={wishlistLoading}
                     >
                       {wishlistLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : isWishlisted ? (
                         <>
-                          <HeartOff className="w-4 h-4" /> Remove from Wishlist
+                          <HeartOff className="h-4 w-4" /> Remove from Wishlist
                         </>
                       ) : (
                         <>
-                          <Heart className="w-4 h-4" /> Add to Wishlist
+                          <Heart className="h-4 w-4" /> Add to Wishlist
                         </>
                       )}
                     </button>
 
-                    {/* Mentor Selection Modal */}
                     <AlertDialog open={mentorSelectionOpen} onOpenChange={setMentorSelectionOpen}>
                       <AlertDialogContent>
                         <AlertDialogHeader>
@@ -388,42 +433,31 @@ const CourseDetails = () => {
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <div className="py-4">
-                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Preferred Mentor</label>
+                          <label className="mb-1.5 block text-sm font-medium text-foreground/80">Preferred Mentor</label>
                           <select
                             value={selectedMentor}
                             onChange={(e) => setSelectedMentor(e.target.value)}
-                            className="w-full bg-muted/30 border border-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                            className="w-full rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                           >
                             <option value="">Select a Mentor</option>
-                            {celebrities.map((c) => <option key={c} value={c}>{c}</option>)}
+                            {mentorOptions.map((mentor) => <option key={mentor} value={mentor}>{mentor}</option>)}
                           </select>
                         </div>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={proceedAfterMentorSelection}
-                            className="btn-primary"
-                            disabled={!selectedMentor}
-                          >
+                          <AlertDialogAction onClick={proceedAfterMentorSelection} className="btn-primary" disabled={!selectedMentor}>
                             Continue
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-
                   </>
                 )}
 
                 <ul className="mt-6 space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-secondary" /> Certificate of completion
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-secondary" /> Lifetime access
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-secondary" /> Community support
-                  </li>
+                  <li className="flex items-center gap-2"><Award className="h-4 w-4 text-secondary" /> Certificate of completion</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-secondary" /> Lifetime access</li>
+                  <li className="flex items-center gap-2"><Users className="h-4 w-4 text-secondary" /> Community support</li>
                 </ul>
               </div>
             </div>
@@ -431,88 +465,178 @@ const CourseDetails = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="container py-10">
-        <div className="lg:max-w-3xl">
-          <div className="flex gap-1 border-b border-border mb-8 overflow-x-auto">
-            {tabs.filter(t => isEnrolled || t !== "Instructors").map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  tab === t
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="lg:max-w-3xl">
+            <div className="mb-8 flex gap-1 overflow-x-auto border-b border-border">
+              {tabs.filter((currentTab) => isEnrolled || currentTab !== "Instructors").map((currentTab) => (
+                <button
+                  key={currentTab}
+                  onClick={() => setTab(currentTab)}
+                  className={`whitespace-nowrap border-b-2 px-5 py-3 text-sm font-medium transition-colors ${
+                    tab === currentTab ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {currentTab}
+                </button>
+              ))}
+            </div>
+
+            <div className="animate-fade-in" key={tab}>
+              {tab === "About" && (
+                <div className="max-w-none space-y-4 leading-7">
+                  <p className="text-foreground/90">{course.description}</p>
+                  <p className="text-muted-foreground">
+                    This course combines theory and practice - every module ends with a hands-on project to cement your learning.
+                  </p>
+                  <div className="mt-8 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-2xl border border-border bg-card/60 p-5">
+                      <div className="flex items-center gap-3">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        <h3 className="font-semibold">What you will learn</h3>
+                      </div>
+                      <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                        {learningObjectives.slice(0, 3).map((item) => (
+                          <li key={item} className="flex gap-2">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-secondary" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-card/60 p-5">
+                      <div className="flex items-center gap-3">
+                        <Target className="h-5 w-5 text-secondary" />
+                        <h3 className="font-semibold">Before you start</h3>
+                      </div>
+                      <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                        {prerequisites.map((item) => (
+                          <li key={item} className="flex gap-2">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {tab === "Outcomes" && (
+                <ul className="grid gap-3 md:grid-cols-2">
+                  {learningObjectives.map((item, index) => (
+                    <li key={`${item}-${index}`} className="glass-card flex items-start gap-3 p-4">
+                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-secondary" />
+                      <span className="text-sm">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {tab === "Curriculum" && (
+                <div className="space-y-3">
+                  {(Array.isArray(course.lessons) ? course.lessons : []).map((lesson, index) => (
+                    <div key={lesson.id || index} className="glass-card flex items-center gap-4 p-5">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+                        <span className="text-sm font-bold text-primary">{index + 1}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-display text-sm font-semibold">{lesson.title}</h4>
+                        {lesson.content && <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{lesson.content}</p>}
+                      </div>
+                      <PlayCircle className="h-5 w-5 shrink-0 text-secondary" />
+                    </div>
+                  ))}
+                  {(!course.lessons || course.lessons.length === 0) && (
+                    <p className="py-8 text-center text-sm text-muted-foreground">No lessons available yet. Check back soon!</p>
+                  )}
+                </div>
+              )}
+
+              {tab === "Instructors" && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {course.instructor && (
+                    <div className="glass-card flex items-center gap-4 p-5">
+                      <img
+                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(course.celebrityTeacher || course.instructor?.name || "Instructor")}&background=8B5CF6&color=fff&bold=true`}
+                        alt={course.instructor?.name}
+                        className="h-16 w-16 rounded-full border-2 border-secondary object-cover"
+                      />
+                      <div>
+                        <h4 className="font-display font-semibold">{course.celebrityTeacher || course.instructor?.name}</h4>
+                        <p className="text-xs text-muted-foreground">Lead Instructor</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === "Reviews" && (
+                <div className="space-y-5">
+                  {isEnrolled && (
+                    <form onSubmit={submitReview} className="glass-card space-y-4 p-5">
+                      <h3 className="font-display font-semibold">Share your experience</h3>
+                      <label className="block text-sm font-medium">
+                        Rating
+                        <select
+                          className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3"
+                          value={reviewForm.rating}
+                          onChange={(event) => setReviewForm({ ...reviewForm, rating: Number(event.target.value) })}
+                        >
+                          {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}
+                        </select>
+                      </label>
+                      <label className="block text-sm font-medium">
+                        Comment
+                        <textarea
+                          className="mt-2 min-h-24 w-full rounded-xl border border-border bg-background p-3"
+                          value={reviewForm.comment}
+                          onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })}
+                        />
+                      </label>
+                      <button type="submit" className="btn-primary">Save review</button>
+                    </form>
+                  )}
+                  {reviews.length ? reviews.map((review) => (
+                    <article key={review.id} className="glass-card p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="font-semibold">{review.user.name}</h3>
+                        <span className="text-sm font-semibold text-primary">{review.rating}/5</span>
+                      </div>
+                      {review.comment && <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>}
+                      <time className="mt-2 block text-xs text-muted-foreground" dateTime={review.createdAt}>{new Date(review.createdAt).toLocaleDateString()}</time>
+                    </article>
+                  )) : (
+                    <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">No reviews yet.</p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="animate-fade-in" key={tab}>
-            {tab === "About" && (
-              <div className="prose prose-invert max-w-none">
-                <p className="text-muted-foreground leading-relaxed">{course.description}</p>
-                <p className="text-muted-foreground leading-relaxed mt-4">
-                  This course combines theory and practice — every module ends with a
-                  hands-on project to cement your learning.
-                </p>
+          <aside className="space-y-4">
+            <div className="rounded-2xl border border-border bg-card/60 p-5">
+              <h3 className="font-semibold">Course snapshot</h3>
+              <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+                <div className="flex items-center justify-between gap-3"><span>Difficulty</span><span className="font-medium text-foreground">{course.level}</span></div>
+                <div className="flex items-center justify-between gap-3"><span>Format</span><span className="font-medium text-foreground">Self-paced</span></div>
+                <div className="flex items-center justify-between gap-3"><span>Certificate</span><span className="font-medium text-foreground">Included</span></div>
+                <div className="flex items-center justify-between gap-3"><span>Community</span><span className="font-medium text-foreground">Available</span></div>
               </div>
-            )}
-            {tab === "Outcomes" && (
-              <ul className="grid md:grid-cols-2 gap-3">
-                {(course.outcomes || []).map((o: string, i: number) => (
-                  <li key={i} className="flex items-start gap-3 glass-card p-4">
-                    <CheckCircle2 className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
-                    <span className="text-sm">{o}</span>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card/60 p-5">
+              <h3 className="font-semibold">Learning objectives</h3>
+              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                {learningObjectives.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span>{item}</span>
                   </li>
                 ))}
               </ul>
-            )}
-            {tab === "Curriculum" && (
-              <div className="space-y-3">
-                {(Array.isArray(course.lessons) ? course.lessons : []).map((lesson, i: number) => (
-                  <div key={lesson.id || i} className="glass-card p-5 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-primary">{i + 1}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-display font-semibold text-sm">{lesson.title}</h4>
-                      {lesson.content && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{lesson.content}</p>}
-                    </div>
-                    <PlayCircle className="w-5 h-5 text-secondary shrink-0" />
-                  </div>
-                ))}
-                {(!course.lessons || course.lessons.length === 0) && (
-                  <p className="text-muted-foreground text-sm text-center py-8">No lessons available yet. Check back soon!</p>
-                )}
-              </div>
-            )}
-            {tab === "Instructors" && (
-              <div className="grid md:grid-cols-2 gap-4">
-                {course.instructor && (
-                  <div className="glass-card p-5 flex items-center gap-4">
-                    <img
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(course.celebrityTeacher || course.instructor?.name || 'Instructor')}&background=8B5CF6&color=fff&bold=true`}
-                      alt={course.instructor?.name}
-                      className="w-16 h-16 rounded-full object-cover border-2 border-secondary"
-                    />
-                    <div>
-                      <h4 className="font-display font-semibold">{course.celebrityTeacher || course.instructor?.name}</h4>
-                      <p className="text-xs text-muted-foreground">Lead Instructor</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {tab === "Reviews" && (
-              <div className="space-y-5">
-                {isEnrolled && <form onSubmit={submitReview} className="glass-card space-y-4 p-5"><h3 className="font-display font-semibold">Share your experience</h3><label className="block text-sm font-medium">Rating<select className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3" value={reviewForm.rating} onChange={(event) => setReviewForm({ ...reviewForm, rating: Number(event.target.value) })}>{[5,4,3,2,1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}</select></label><label className="block text-sm font-medium">Comment<textarea className="mt-2 min-h-24 w-full rounded-xl border border-border bg-background p-3" value={reviewForm.comment} onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })} /></label><button type="submit" className="btn-primary">Save review</button></form>}
-                {reviews.length ? reviews.map((review) => <article key={review.id} className="glass-card p-5"><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">{review.user.name}</h3><span className="text-sm font-semibold text-primary">{review.rating}/5</span></div>{review.comment && <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>}<time className="mt-2 block text-xs text-muted-foreground" dateTime={review.createdAt}>{new Date(review.createdAt).toLocaleDateString()}</time></article>) : <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">No reviews yet.</p>}
-              </div>
-            )}
-          </div>
+            </div>
+          </aside>
         </div>
       </div>
     </div>

@@ -1,0 +1,72 @@
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
+async function request(path, options = {}) {
+  const token = localStorage.getItem('lms_token');
+  const response = await fetch(`${API_URL}${path}`, {
+    credentials: 'include',
+    cache: 'no-store',
+    ...options,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...options.headers },
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || 'Request failed');
+  return payload;
+}
+
+export const platformAdminApi = {
+  uploadImage: async (file) => {
+    const token = localStorage.getItem('lms_token');
+    const body = new FormData();
+    body.append('file', file);
+    const response = await fetch(`${API_URL}/upload`, {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'Image upload failed');
+    return payload;
+  },
+  operations: (kind) => request(`/platform/admin/operations/${kind}`),
+  analytics: () => request('/platform/admin/analytics'),
+  auditLogs: () => request('/platform/admin/audit-logs?limit=100'),
+  tickets: () => request('/platform/support-tickets'),
+  updateTicket: (id, data) => request(`/platform/support-tickets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  search: (query) => request(`/platform/admin/search?q=${encodeURIComponent(query)}`),
+  users: (role) => request(`/admin/users?limit=100&role=${encodeURIComponent(role)}`),
+  createUser: (data) => request('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateUser: (id, data) => request(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
+  courses: () => request('/admin/courses?limit=100'),
+  updateCourse: (id, data) => request(`/admin/courses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCourse: (id) => request(`/admin/courses/${id}`, { method: 'DELETE' }),
+  createCourse: (data) => request('/courses', { method: 'POST', body: JSON.stringify(data) }),
+  course: (id) => request(`/courses/${id}`),
+  editCourse: (id, data) => request(`/courses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  duplicateCourse: (id) => request(`/courses/${id}/duplicate`, { method: 'POST' }),
+  addLesson: (courseId, data) => request(`/courses/${courseId}/lessons`, { method: 'POST', body: JSON.stringify(data) }),
+  updateLesson: (courseId, lessonId, data) => request(`/courses/${courseId}/lessons/${lessonId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteLesson: (courseId, lessonId) => request(`/courses/${courseId}/lessons/${lessonId}`, { method: 'DELETE' }),
+  reorderLessons: (courseId, lessonIds) => request(`/courses/${courseId}/lessons/reorder`, { method: 'PUT', body: JSON.stringify({ lessonIds }) }),
+  createAssessment: (courseId, data) => request(`/platform/courses/${courseId}/assessments`, { method: 'POST', body: JSON.stringify(data) }),
+  createAssignment: (courseId, data) => request(`/platform/courses/${courseId}/assignments`, { method: 'POST', body: JSON.stringify(data) }),
+  submissions: (assignmentId) => request(`/platform/assignments/${assignmentId}/submissions`),
+  gradeSubmission: (id, data) => request(`/platform/submissions/${id}/grade`, { method: 'PUT', body: JSON.stringify(data) }),
+  issueCertificate: (enrollmentId) => request(`/platform/certificates/enrollments/${enrollmentId}/issue`, { method: 'POST' }),
+  revokeCertificate: (id) => request(`/platform/certificates/${id}/revoke`, { method: 'PUT' }),
+  sendNotification: (data) => request('/platform/admin/notifications', { method: 'POST', body: JSON.stringify(data) }),
+  createAnnouncement: (data) => request('/platform/admin/announcements', { method: 'POST', body: JSON.stringify(data) }),
+  deleteAssessment: (id) => request(`/platform/assessments/${id}`, { method: 'DELETE' }),
+  deleteAssignment: (id) => request(`/platform/assignments/${id}`, { method: 'DELETE' }),
+  moderateReview: (id, status) => request(`/platform/admin/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  personalities: () => request('/features/personalities'),
+  createPersonality: (data) => request('/features/admin/personalities', { method: 'POST', body: JSON.stringify(data) }),
+  flashcardDecks: () => request('/features/flashcard-decks'),
+  createFlashcardDeck: (data) => request('/features/flashcard-decks', { method: 'POST', body: JSON.stringify(data) }),
+  updateFlashcardDeck: (id, data) => request(`/features/flashcard-decks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteFlashcardDeck: (id) => request(`/features/flashcard-decks/${id}`, { method: 'DELETE' }),
+  communityReports: () => request('/features/admin/community/reports'),
+  moderateCommunityReport: (id, action) => request(`/features/admin/community/reports/${id}`, { method: 'PUT', body: JSON.stringify({ action }) }),
+};

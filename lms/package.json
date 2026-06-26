@@ -1,0 +1,23 @@
+{
+  "name": "lms-root",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "node -e \"console.log('\\nLearner: http://localhost:3000/\\nAdmin:   http://localhost:3001/\\n')\" && concurrently -n learner,admin -c cyan,magenta \"npm run learner\" \"npm run admin\"",
+    "learner": "npm --prefix course-compass-main run dev",
+    "backend": "npm --prefix backend run dev",
+    "admin": "npm --prefix admin run dev",
+    "dev:all": "concurrently -n backend,learner,admin -c green,cyan,magenta \"npm run backend\" \"npm run learner\" \"npm run admin\"",
+    "dev:backend": "npm run backend",
+    "dev:frontend": "npm run learner",
+    "dev:admin": "npm run admin",
+    "ports:stop": "node scripts/stop-ports.js",
+    "install:all": "npm install && cd backend && npm install && cd ../course-compass-main && npm install && cd ../admin && npm install",
+    "build": "cd course-compass-main && npm run build && cd ../admin && npm run build",
+    "lint": "npm --prefix course-compass-main run lint && npm --prefix admin run lint",
+    "typecheck": "cd course-compass-main && npx tsc --noEmit -p tsconfig.app.json",
+    "prisma:validate": "npm --prefix backend run prisma:validate"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

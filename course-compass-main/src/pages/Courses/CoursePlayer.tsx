@@ -44,6 +44,10 @@ export default function CoursePlayer() {
   const [lessonNotes, setLessonNotes] = useState("");
   const celebrities = ["Virat Kohli", "Salman Khan", "Narendra Modi", "Sachin Tendulkar", "Hardik Pandya", "Virtual Mentor"];
   const activeLesson = course?.lessons?.[activeLessonIndex];
+  const activeLessonResources = Array.isArray((activeLesson as Lesson & { resources?: Array<{ label?: string; url: string }> } | undefined)?.resources)
+    ? ((activeLesson as Lesson & { resources?: Array<{ label?: string; url: string }> }).resources || [])
+    : [];
+  const activeLessonCaptionsUrl = (activeLesson as (Lesson & { captionsUrl?: string }) | undefined)?.captionsUrl || "";
   const lessonStorageKey = `uptoskills-notes:${id}:${activeLesson?.id || "lesson"}`;
 
   const fetchEnrollment = useCallback(async (): Promise<PlayerEnrollment | null> => {
@@ -320,8 +324,8 @@ export default function CoursePlayer() {
                 <h3 className="font-semibold text-foreground">Lesson resources</h3>
                 <p className="mt-1 text-xs text-muted-foreground">Files, captions, and downloads attached by the course team appear here.</p>
                 <div className="mt-4 space-y-3">
-                  {activeLesson && Array.isArray((activeLesson as Lesson & { resources?: Array<{ label?: string; url: string }> }).resources) && (activeLesson as Lesson & { resources?: Array<{ label?: string; url: string }> }).resources!.length > 0 ? (
-                    (activeLesson as Lesson & { resources?: Array<{ label?: string; url: string }> }).resources!.map((resource, index) => (
+                  {activeLessonResources.length > 0 ? (
+                    activeLessonResources.map((resource, index) => (
                       <a
                         key={`${resource.url}-${index}`}
                         href={resource.url}
@@ -338,9 +342,9 @@ export default function CoursePlayer() {
                       No downloads attached to this lesson.
                     </div>
                   )}
-                  {(activeLesson as Lesson & { captionsUrl?: string }).captionsUrl && (
+                  {activeLessonCaptionsUrl && (
                     <a
-                      href={(activeLesson as Lesson & { captionsUrl?: string }).captionsUrl}
+                      href={activeLessonCaptionsUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center gap-3 rounded-2xl border border-border bg-background/60 px-4 py-3 text-sm transition-colors hover:border-secondary/30 hover:bg-secondary/10"

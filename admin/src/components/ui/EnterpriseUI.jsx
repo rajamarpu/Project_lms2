@@ -26,7 +26,7 @@ export function PageShell({ eyebrow, title, description, actions, children, clas
       <section className="admin-hero-band">
         <div className="min-w-0">
           {eyebrow && <p className="admin-eyebrow">{eyebrow}</p>}
-          <h1 className="admin-page-title">{title}</h1>
+          <h1 className="admin-page-title brand-mix-heading">{title}</h1>
           {description && <p className="admin-page-description">{description}</p>}
         </div>
         {actions && <div className="admin-action-row">{actions}</div>}
@@ -64,7 +64,7 @@ export function StatWidget({ label, value, delta, tone = 'blue', icon: Icon, foo
     <>
       <span className="stat-accent-line" aria-hidden />
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="stat-copy min-w-0">
           <p className="admin-label">{label}</p>
           <p className="stat-value">{displayValue}</p>
         </div>
@@ -163,7 +163,7 @@ export function EnterpriseTable({ columns, rows, emptyTitle = 'No records found'
             {rows.map((row, index) => (
               <tr key={getRowKey ? getRowKey(row) : row.id || index}>
                 {columns.map((column) => (
-                  <td key={column.key}>{column.render ? column.render(row) : row[column.key]}</td>
+                  <td key={column.key}>{column.render ? column.render(row) : (row[column.key] === null || row[column.key] === undefined || row[column.key] === '' ? '—' : row[column.key])}</td>
                 ))}
               </tr>
             ))}
@@ -178,9 +178,9 @@ export function EnterpriseTable({ columns, rows, emptyTitle = 'No records found'
   );
 }
 
-export function ChartPanel({ title, description, children, action }) {
+export function ChartPanel({ title, description, children, action, className = '' }) {
   return (
-    <section className="enterprise-card">
+    <section className={`enterprise-card ${className}`}>
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h2 className="section-title">{title}</h2>

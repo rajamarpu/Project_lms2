@@ -4,6 +4,50 @@ const { safePage, calculateAssessmentScore } = require('../utils/platformRules')
 
 const pageArgs = safePage;
 
+const monthKey = (date) => `${date.getFullYear()}-${date.getMonth()}`;
+const monthLabel = (date) => date.toLocaleString('en-IN', { month: 'short' });
+const createMonthlyBuckets = (count, now = new Date()) => {
+  const buckets = [];
+  for (let index = count - 1; index >= 0; index -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
+    buckets.push({
+      key: monthKey(date),
+      label: monthLabel(date),
+      year: date.getFullYear(),
+      month: date.getMonth(),
+    });
+  }
+  return buckets;
+};
+
+const withMonthlyCounts = (buckets, rows, getDate, field = 'value') => {
+  const mapped = buckets.map((bucket) => ({ label: bucket.label, [field]: 0 }));
+  const indexByKey = new Map(buckets.map((bucket, index) => [bucket.key, index]));
+  rows.forEach((row) => {
+    const valueDate = getDate(row);
+    if (!valueDate) return;
+    const key = monthKey(new Date(valueDate));
+    const index = indexByKey.get(key);
+    if (index === undefined) return;
+    mapped[index][field] += 1;
+  });
+  return mapped;
+};
+
+const withMonthlySums = (buckets, rows, getDate, getAmount, field = 'value') => {
+  const mapped = buckets.map((bucket) => ({ label: bucket.label, [field]: 0 }));
+  const indexByKey = new Map(buckets.map((bucket, index) => [bucket.key, index]));
+  rows.forEach((row) => {
+    const valueDate = getDate(row);
+    if (!valueDate) return;
+    const key = monthKey(new Date(valueDate));
+    const index = indexByKey.get(key);
+    if (index === undefined) return;
+    mapped[index][field] += Number(getAmount(row) || 0);
+  });
+  return mapped;
+};
+
 const paged = (res, data, total, page, limit) => res.json({
   success: true, count: data.length, data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
 });
@@ -376,12 +420,14 @@ exports.getAuditLogs = async (req, res, next) => {
 
 exports.getAnalytics = async (req, res, next) => {
   try {
+    const trendBuckets = createMonthlyBuckets(6);
     const [
       usersByStatus, coursesByStatus, enrollments, completedEnrollments,
       assessmentAttempts, assignmentSubmissions, certificatesIssued,
       paidRevenue, openTickets, reviewSummary,
       activeAiTutors, totalLiveSessions, upcomingLiveSessions,
       activePracticeQuestions, openCommunityReports,
+      learnerRows, enrollmentRows, paymentRows, reviewRows, ticketRows, instructorRows,
     ] = await Promise.all([
       prisma.user.groupBy({ by: ['role', 'status'], _count: { _all: true } }),
       prisma.course.groupBy({ by: ['status'], _count: { _all: true } }),
@@ -398,6 +444,24 @@ exports.getAnalytics = async (req, res, next) => {
       prisma.liveSession.count({ where: { startsAt: { gte: new Date() }, status: { in: ['scheduled', 'live'] } } }),
       prisma.practiceQuestion.count({ where: { active: true } }),
       prisma.communityReport.count({ where: { status: 'open' } }),
+      prisma.user.findMany({ where: { role: 'user', status: 'approved' }, select: { createdAt: true } }),
+      prisma.enrollment.findMany({ select: { createdAt: true, updatedAt: true, progress: true, status: true } }),
+      prisma.billingRecord.findMany({ where: { status: 'paid', currency: 'INR' }, select: { createdAt: true, amount: true } }),
+      prisma.courseReview.findMany({ where: { status: 'published' }, select: { createdAt: true, rating: true } }),
+      prisma.supportTicket.findMany({ select: { status: true, createdAt: true } }),
+      prisma.user.findMany({
+        where: { role: 'instructor', status: 'approved' },
+        select: {
+          id: true,
+          name: true,
+          courses: {
+            select: {
+              _count: { select: { enrollments: true } },
+              price: true,
+            }
+          }
+        }
+      }),
     ]);
     const userCount = (role, status) => usersByStatus
       .filter((row) => row.role === role && (!status || row.status === status))
@@ -415,6 +479,52 @@ exports.getAnalytics = async (req, res, next) => {
     const publishedCourses = courseCount('approved');
     const draftCourses = courseCount('draft');
     const pendingCourses = courseCount('pending');
+    const enrollmentsTrend = withMonthlyCounts(trendBuckets, enrollmentRows, (row) => row.createdAt, 'enrollments');
+    const revenueTrend = withMonthlySums(trendBuckets, paymentRows, (row) => row.createdAt, (row) => row.amount, 'revenue');
+    const learnerGrowthTrend = withMonthlyCounts(trendBuckets, learnerRows, (row) => row.createdAt, 'learners');
+    const completionTrend = withMonthlyCounts(
+      trendBuckets,
+      enrollmentRows.filter((row) => row.status === 'completed' || Number(row.progress) >= 100),
+      (row) => row.updatedAt || row.createdAt,
+      'completed'
+    );
+    const reviewBase = trendBuckets.map((bucket) => ({ label: bucket.label, reviews: 0, averageRating: 0 }));
+    const reviewStatsByKey = new Map(trendBuckets.map((bucket, index) => [bucket.key, { index, count: 0, sum: 0 }]));
+    reviewRows.forEach((row) => {
+      const key = monthKey(new Date(row.createdAt));
+      const stats = reviewStatsByKey.get(key);
+      if (!stats) return;
+      stats.count += 1;
+      stats.sum += Number(row.rating || 0);
+    });
+    reviewStatsByKey.forEach((stats) => {
+      reviewBase[stats.index].reviews = stats.count;
+      reviewBase[stats.index].averageRating = stats.count ? Number((stats.sum / stats.count).toFixed(2)) : 0;
+    });
+    const supportStatusBreakdown = ['open', 'assigned', 'waiting', 'resolved', 'closed'].map((status) => ({
+      status,
+      count: ticketRows.filter((row) => row.status === status).length,
+    }));
+    const courseStatusBreakdown = ['approved', 'draft', 'pending', 'scheduled', 'archived', 'rejected'].map((status) => ({
+      status,
+      count: courseCount(status),
+    }));
+    const instructorActivity = instructorRows
+      .map((instructor) => {
+        const courseTotal = instructor.courses.length;
+        const enrollmentTotal = instructor.courses.reduce((sum, course) => sum + Number(course._count?.enrollments || 0), 0);
+        const estimatedRevenue = instructor.courses.reduce((sum, course) => sum + (Number(course.price || 0) * Number(course._count?.enrollments || 0)), 0);
+        return {
+          id: instructor.id,
+          name: instructor.name,
+          courses: courseTotal,
+          enrollments: enrollmentTotal,
+          revenue: estimatedRevenue,
+        };
+      })
+      .sort((left, right) => right.enrollments - left.enrollments || right.courses - left.courses)
+      .slice(0, 5);
+
     res.json({
       success: true,
       data: {
@@ -446,6 +556,14 @@ exports.getAnalytics = async (req, res, next) => {
         upcomingLiveSessions,
         activePracticeQuestions,
         openCommunityReports,
+        enrollmentsTrend,
+        revenueTrend,
+        learnerGrowthTrend,
+        completionTrend,
+        reviewTrend: reviewBase,
+        supportStatusBreakdown,
+        courseStatusBreakdown,
+        instructorActivity,
         generatedAt: new Date().toISOString(),
       },
     });

@@ -38,7 +38,7 @@ const QUICK_ACTIONS = [
     icon: MdAssessment,
     path: '/dashboard/admin/analytics',
     className:
-      'bg-gradient-to-r from-orange-500 to-amber-400 hover:shadow-[0_8px_24px_rgba(249,115,22,0.45)]',
+      'bg-gradient-to-r from-red-500 to-blue-500 hover:shadow-[0_8px_24px_rgba(239,68,68,0.35)]',
   },
 ];
 
@@ -90,8 +90,8 @@ const MENU_ITEMS = [
 const HELP_ITEM = {
   label: 'Help & Support',
   icon: MdHelpOutline,
-  iconColor: '#F59E0B',
-  iconBg: 'rgba(245,158,11,0.18)',
+  iconColor: '#06B6D4',
+  iconBg: 'rgba(6,182,212,0.18)',
 };
 
 const panelMotion = {

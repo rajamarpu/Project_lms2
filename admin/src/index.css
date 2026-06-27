@@ -46,7 +46,7 @@
   --accent: #3b82f6;
   --accent-strong: #2563eb;
   --success: #10b981;
-  --warning: #f59e0b;
+  --warning: #facc15;
   --danger: #ef4444;
   --shadow-soft: 0 10px 28px rgba(2, 6, 23, 0.18);
   --shadow-hover: 0 18px 44px rgba(2, 6, 23, 0.26);
@@ -147,7 +147,7 @@ body {
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-cyan via-accent-purple to-accent-orange;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-blue via-accent-cyan to-red-500;
   }
 
   .glow-blue {
@@ -192,14 +192,18 @@ body {
   }
 
   .page-shell {
-    @apply rounded-xl border p-4 md:p-6 pb-12;
-    background: var(--admin-page-panel);
+    @apply rounded-[1.6rem] border p-4 pb-10 md:p-6 md:pb-12 xl:p-7;
+    background:
+      radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 18%, transparent), transparent 34%),
+      radial-gradient(circle at 92% 8%, rgba(6, 182, 212, 0.16), transparent 30%),
+      linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, transparent), color-mix(in srgb, var(--admin-page-panel) 100%, transparent)),
+      var(--admin-page-panel);
     border-color: var(--admin-border);
     box-shadow: var(--admin-shadow-card);
   }
 
   .enterprise-card {
-    @apply rounded-xl border p-4 md:p-5 transition-all duration-300;
+    @apply rounded-[1.15rem] border p-4 md:p-5 transition-all duration-300;
     background: var(--card);
     border-color: var(--border);
     box-shadow: var(--shadow-soft);
@@ -210,11 +214,24 @@ body {
   }
 
   .admin-hero-band {
-    @apply flex flex-col gap-4 rounded-lg border p-5 md:flex-row md:items-center md:justify-between;
+    @apply relative overflow-hidden flex flex-col gap-5 rounded-[1.45rem] border p-5 md:flex-row md:items-center md:justify-between md:p-6;
     background:
-      linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 46%),
+      radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 34%),
+      linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, transparent), transparent 46%),
+      radial-gradient(circle at 84% 14%, rgba(6, 182, 212, 0.12), transparent 28%),
       var(--surface);
     border-color: var(--border);
+  }
+
+  .admin-hero-band::after {
+    content: '';
+    position: absolute;
+    inset: auto -4rem -6rem auto;
+    width: 18rem;
+    height: 18rem;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.18), transparent 68%);
+    pointer-events: none;
   }
 
   .admin-eyebrow,
@@ -224,20 +241,35 @@ body {
   }
 
   .admin-page-title {
-    @apply mt-2 text-2xl font-semibold md:text-3xl;
+    @apply mt-2 text-[2rem] font-semibold leading-tight md:text-[2.55rem];
     color: var(--text-primary);
-    letter-spacing: 0;
+    letter-spacing: -0.03em;
   }
 
   .admin-page-description,
   .section-description {
-    @apply mt-2 max-w-3xl text-sm leading-6;
+    @apply mt-2 max-w-3xl text-sm leading-6 md:text-[0.95rem];
     color: var(--text-secondary);
   }
 
   .section-title {
-    @apply text-base font-semibold;
+    @apply text-base font-semibold md:text-lg;
     color: var(--text-primary);
+  }
+
+  .brand-mix-heading {
+    background-image: linear-gradient(135deg, #ffffff 8%, #7dd3fc 42%, #22d3ee 62%, #f87171 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  html.light .brand-mix-heading {
+    background-image: linear-gradient(135deg, #0f172a 8%, #2563eb 42%, #0ea5e9 64%, #ef4444 100%);
+  }
+
+  .brand-subheading {
+    color: color-mix(in srgb, var(--accent) 72%, var(--text-secondary));
   }
 
   .admin-action-row {
@@ -292,12 +324,13 @@ body {
   }
 
   .stat-widget {
-    @apply relative flex min-h-[190px] flex-col overflow-hidden rounded-2xl text-left;
+    @apply relative flex min-h-[208px] flex-col overflow-hidden rounded-[1.6rem] p-5 text-left md:p-6;
     isolation: isolate;
     --metric-start: #4f6bed;
     --metric-end: #6f42d9;
     background:
-      radial-gradient(circle at 112% -10%, rgba(255, 255, 255, 0.26), transparent 36%),
+      radial-gradient(circle at 112% -10%, rgba(255, 255, 255, 0.32), transparent 36%),
+      radial-gradient(circle at 22% 0%, rgba(255, 255, 255, 0.08), transparent 26%),
       linear-gradient(135deg, color-mix(in srgb, var(--metric-start) 92%, #0f172a), color-mix(in srgb, var(--metric-end) 88%, #111827));
     border-color: rgba(255, 255, 255, 0.16);
     box-shadow: 0 12px 28px color-mix(in srgb, var(--metric-end) 24%, rgba(15, 23, 42, 0.2));
@@ -358,13 +391,18 @@ body {
   }
 
   .stat-accent-line {
-    @apply absolute bottom-[52px] left-5 h-[2px] w-[58%] rounded-full;
+    @apply absolute bottom-[58px] left-6 h-[2px] w-[64%] rounded-full;
     background: linear-gradient(90deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.18));
   }
 
+  .stat-copy {
+    @apply max-w-[calc(100%-4.25rem)] pr-3;
+  }
+
   .stat-value {
-    @apply mt-5 truncate text-[2.05rem] font-bold leading-none tracking-normal;
+    @apply mt-4 break-words text-[2rem] font-black leading-[1.02] tracking-[-0.03em] sm:text-[2.2rem];
     color: var(--admin-text-primary);
+    text-wrap: balance;
   }
 
   .stat-icon {
@@ -384,12 +422,12 @@ body {
   }
 
   .stat-meta {
-    @apply mt-4 flex min-h-5 items-center justify-between gap-3 text-xs;
+    @apply mt-4 flex min-h-5 flex-wrap items-center justify-between gap-2 text-xs;
   }
 
   .stat-detail {
-    @apply truncate leading-5;
-    color: rgba(255, 255, 255, 0.84);
+    @apply max-w-[17rem] leading-5;
+    color: rgba(255, 255, 255, 0.9);
   }
 
   .stat-source {
@@ -441,38 +479,108 @@ body {
   }
 
   .tone-red {
-    --accent: #ef4444;
-    --metric-start: #f04b53;
-    --metric-end: #b82032;
+    --accent: #f35b79;
+    --metric-start: #f35b79;
+    --metric-end: #dd3f63;
   }
 
   .tone-green {
-    --accent: #10b981;
-    --metric-start: #13b981;
-    --metric-end: #087b57;
+    --accent: #14b8a6;
+    --metric-start: #18c6b2;
+    --metric-end: #0d9488;
   }
 
   .tone-purple {
-    --accent: #8b5cf6;
-    --metric-start: #7357e8;
-    --metric-end: #8e54d6;
+    --accent: #667eea;
+    --metric-start: #667eea;
+    --metric-end: #4f46e5;
   }
 
   .tone-orange {
-    --accent: #f97316;
-    --metric-start: #f05262;
-    --metric-end: #f97348;
+    --accent: #2bb8f1;
+    --metric-start: #37c5f7;
+    --metric-end: #0ea5e9;
   }
 
   .tone-gray {
-    --accent: #94a3b8;
-    --metric-start: #26355f;
-    --metric-end: #111b3f;
+    --accent: #0ea5e9;
+    --metric-start: #38bdf8;
+    --metric-end: #2563eb;
+  }
+
+  .tone-navy {
+    --accent: #06b6d4;
+    --metric-start: #22d3ee;
+    --metric-end: #0284c7;
+  }
+
+  .admin-insight-grid {
+    @apply grid items-stretch gap-4 xl:grid-cols-3;
+  }
+
+  .admin-insight-card {
+    @apply enterprise-card relative h-full overflow-hidden;
+  }
+
+  .admin-balanced-grid {
+    @apply grid items-stretch gap-4 xl:grid-cols-2;
+  }
+
+  .admin-feature-grid {
+    @apply grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .admin-insight-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 13%, transparent), transparent 50%);
+  }
+
+  .admin-chart-shell {
+    @apply rounded-[1.15rem] border p-4;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--surface) 100%, transparent)),
+      radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 10%, transparent), transparent 35%);
+    border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+  }
+
+  .admin-chart-meta {
+    @apply mb-4 flex flex-wrap items-center justify-between gap-3;
+  }
+
+  .admin-chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
+  .chart-legend {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .chart-legend-item {
+    @apply inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium;
+    color: var(--text-secondary);
+    background: color-mix(in srgb, var(--surface) 86%, transparent);
+    border: 1px solid var(--border);
+  }
+
+  .chart-legend-item span {
+    @apply h-2.5 w-2.5 rounded-full;
+  }
+
+  .admin-health-dot {
+    @apply inline-flex h-2.5 w-2.5 rounded-full;
+    background: var(--success);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--success) 16%, transparent);
   }
 
   .stat-widget .admin-label {
-    @apply text-sm font-medium normal-case tracking-normal;
-    color: rgba(255, 255, 255, 0.92);
+    @apply text-[0.98rem] font-semibold normal-case tracking-normal leading-6;
+    color: rgba(255, 255, 255, 0.98);
   }
 
   .admin-table {
@@ -719,7 +827,7 @@ html.light .bg-white\/20:not(.no-theme *) {
   background-color: rgba(15, 23, 42, 0.12) !important;
 }
 
-html.light .text-white:not(.no-theme *):not([style*="background"]):not(.bg-gradient-to-r *):not(.bg-gradient-to-br *):not(.bg-accent-cyan *):not(.bg-accent-blue *):not(.bg-accent-purple *):not(.bg-accent-orange *):not(.bg-purple-600 *):not(.bg-blue-600 *):not(.bg-indigo-600 *):not(.bg-red-600 *):not(.bg-emerald-600 *):not(.bg-amber-600 *):not(.bg-pink-600 *):not(.bg-gradient-to-tr *),
+html.light .text-white:not(.no-theme *):not([style*="background"]):not(.bg-gradient-to-r *):not(.bg-gradient-to-br *):not(.bg-accent-cyan *):not(.bg-accent-blue *):not(.bg-accent-purple *):not(.bg-purple-600 *):not(.bg-blue-600 *):not(.bg-indigo-600 *):not(.bg-red-600 *):not(.bg-emerald-600 *):not(.bg-amber-600 *):not(.bg-pink-600 *):not(.bg-gradient-to-tr *),
 html.light .text-\[\#E5E7EB\]:not(.no-theme *),
 html.light .text-\[\#e5e7eb\]:not(.no-theme *),
 html.light .text-\[\#F8FAFC\]:not(.no-theme *),
@@ -827,32 +935,35 @@ main,
     box-shadow 0.25s ease;
 }
 
-/* Metric cards keep readable text in both themes and use color as accent, not as data. */
+/* Metric cards stay fully colored in both themes with protected contrast. */
 html.light .stat-widget {
   --metric-start: #5e72e4;
   --metric-end: #825ee4;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--metric-start) 8%, transparent), transparent 42%),
-    #ffffff;
-  border-color: #e2e8f0;
-  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+    radial-gradient(circle at 112% -10%, rgba(255, 255, 255, 0.34), transparent 36%),
+    radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.11), transparent 24%),
+    linear-gradient(135deg, color-mix(in srgb, var(--metric-start) 88%, #ffffff), color-mix(in srgb, var(--metric-end) 92%, #0f172a));
+  border-color: color-mix(in srgb, var(--metric-start) 28%, rgba(255, 255, 255, 0.5));
+  box-shadow: 0 18px 34px color-mix(in srgb, var(--metric-end) 22%, rgba(15, 23, 42, 0.16));
 }
 
 html.light .stat-widget.tone-blue { --metric-start: #2563eb; --metric-end: #1d4ed8; }
-html.light .stat-widget.tone-green { --metric-start: #16a34a; --metric-end: #15803d; }
-html.light .stat-widget.tone-red { --metric-start: #ef4444; --metric-end: #b91c1c; }
-html.light .stat-widget.tone-purple { --metric-start: #6d67e4; --metric-end: #8f5bd7; }
-html.light .stat-widget.tone-orange { --metric-start: #f15368; --metric-end: #f26b45; }
-html.light .stat-widget.tone-gray { --metric-start: #26335f; --metric-end: #10193c; }
+html.light .stat-widget.tone-green { --metric-start: #1bb8a5; --metric-end: #0f9186; }
+html.light .stat-widget.tone-red { --metric-start: #f35b79; --metric-end: #db4063; }
+html.light .stat-widget.tone-purple { --metric-start: #667eea; --metric-end: #4f46e5; }
+html.light .stat-widget.tone-orange { --metric-start: #38c8f6; --metric-end: #0ea5e9; }
+html.light .stat-widget.tone-gray { --metric-start: #38bdf8; --metric-end: #2563eb; }
+html.light .stat-widget.tone-navy { --metric-start: #22d3ee; --metric-end: #0284c7; }
 
 html.light .stat-widget::before,
 html.light .stat-widget::after {
-  opacity: 0;
+  opacity: 0.72;
 }
 
 html.light .stat-value,
 html.light .stat-widget .admin-label {
-  color: #0f172a;
+  color: #ffffff;
+  text-shadow: 0 1px 14px rgba(15, 23, 42, 0.34);
 }
 
 html.light .stat-widget .admin-label {
@@ -861,13 +972,13 @@ html.light .stat-widget .admin-label {
 
 html.light .stat-detail,
 html.light .stat-source {
-  color: #475569;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 html.light .stat-delta {
-  color: #0f172a;
-  background: #f8fafc;
-  border-color: #e2e8f0;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.22);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 html.light .stat-accent-line {
@@ -875,9 +986,9 @@ html.light .stat-accent-line {
 }
 
 html.light .stat-icon {
-  color: var(--metric-start);
-  background: color-mix(in srgb, var(--metric-start) 10%, white);
-  border-color: color-mix(in srgb, var(--metric-start) 20%, #e2e8f0);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 html.light .stat-source > span {
@@ -886,18 +997,19 @@ html.light .stat-source > span {
 }
 
 html.light .stat-widget-clickable .stat-source::after {
-  color: #0f172a;
-  background: #f8fafc;
-  border-color: #e2e8f0;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 html[data-theme='dark'] .stat-widget { --metric-start: #4055c8; --metric-end: #6534ad; }
 html[data-theme='dark'] .stat-widget.tone-blue { --metric-start: #2764ff; --metric-end: #1746b8; }
-html[data-theme='dark'] .stat-widget.tone-green { --metric-start: #13b981; --metric-end: #087b57; }
-html[data-theme='dark'] .stat-widget.tone-red { --metric-start: #f04b53; --metric-end: #b82032; }
-html[data-theme='dark'] .stat-widget.tone-purple { --metric-start: #5945ba; --metric-end: #713ba5; }
-html[data-theme='dark'] .stat-widget.tone-orange { --metric-start: #bf3f55; --metric-end: #c85035; }
-html[data-theme='dark'] .stat-widget.tone-gray { --metric-start: #1c294e; --metric-end: #0a1029; }
+html[data-theme='dark'] .stat-widget.tone-green { --metric-start: #1fc8b4; --metric-end: #0f9186; }
+html[data-theme='dark'] .stat-widget.tone-red { --metric-start: #f35b79; --metric-end: #dd3f63; }
+html[data-theme='dark'] .stat-widget.tone-purple { --metric-start: #667eea; --metric-end: #4f46e5; }
+html[data-theme='dark'] .stat-widget.tone-orange { --metric-start: #37c5f7; --metric-end: #0ea5e9; }
+html[data-theme='dark'] .stat-widget.tone-gray { --metric-start: #38bdf8; --metric-end: #2563eb; }
+html[data-theme='dark'] .stat-widget.tone-navy { --metric-start: #22d3ee; --metric-end: #0284c7; }
 
 html:not(.light) .stat-value,
 html:not(.light) .stat-widget .admin-label {

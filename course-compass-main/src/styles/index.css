@@ -16,7 +16,7 @@
     --popover: 222 47% 12%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 18 100% 60%;
+    --primary: 221 91% 58%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 174 84% 40%;
@@ -25,7 +25,7 @@
     --muted: 218 31% 18%;
     --muted-foreground: 215 20% 70%;
 
-    --accent: 199 89% 55%;
+    --accent: 187 92% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -33,20 +33,20 @@
 
     --border: 220 24% 24%;
     --input: 220 24% 24%;
-    --ring: 18 100% 60%;
+    --ring: 221 91% 58%;
 
     --radius: 0.9rem;
 
     --navy: 222 47% 11%;
     --navy-deep: 222 47% 6%;
-    --orange: 18 100% 60%;
+    --upto-red: 354 84% 60%;
     --teal: 174 84% 40%;
 
-    --gradient-mesh: radial-gradient(at 20% 20%, hsl(18 100% 60% / 0.18) 0px, transparent 45%),
+    --gradient-mesh: radial-gradient(at 20% 20%, hsl(221 91% 58% / 0.18) 0px, transparent 45%),
                      radial-gradient(at 80% 0%, hsl(174 84% 40% / 0.18) 0px, transparent 42%),
                      radial-gradient(at 0% 100%, hsl(199 89% 55% / 0.12) 0px, transparent 50%),
-                     radial-gradient(at 85% 75%, hsl(258 85% 65% / 0.14) 0px, transparent 48%);
-    --gradient-primary: linear-gradient(135deg, hsl(18 100% 60%), hsl(174 84% 40%));
+                     radial-gradient(at 85% 75%, hsl(354 84% 60% / 0.12) 0px, transparent 48%);
+    --gradient-primary: linear-gradient(135deg, hsl(221 91% 58%), hsl(174 84% 40%));
     --gradient-card: linear-gradient(145deg, hsl(222 47% 16%), hsl(222 47% 12%));
 
     --shadow-glow-primary: 0 0 30px hsl(var(--primary) / 0.28);
@@ -55,12 +55,12 @@
 
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 18 100% 60%;
+    --sidebar-primary: 221 91% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 218 31% 18%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 220 24% 24%;
-    --sidebar-ring: 18 100% 60%;
+    --sidebar-ring: 221 91% 58%;
   }
 
   [data-theme='light'] {
@@ -70,7 +70,7 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 18 100% 50%;
+    --primary: 221 91% 56%;
     --primary-foreground: 0 0% 100%;
     --secondary: 174 84% 38%;
     --secondary-foreground: 0 0% 100%;
@@ -82,20 +82,20 @@
     --destructive-foreground: 0 0% 100%;
     --border: 214 32% 86%;
     --input: 214 32% 86%;
-    --ring: 18 100% 50%;
-    --gradient-mesh: radial-gradient(at 20% 20%, hsl(18 100% 50% / 0.08) 0px, transparent 50%),
+    --ring: 221 91% 56%;
+    --gradient-mesh: radial-gradient(at 20% 20%, hsl(221 91% 56% / 0.08) 0px, transparent 50%),
                      radial-gradient(at 80% 0%, hsl(174 84% 38% / 0.08) 0px, transparent 50%),
-                     radial-gradient(at 80% 80%, hsl(217 91% 52% / 0.06) 0px, transparent 50%);
+                     radial-gradient(at 80% 80%, hsl(354 84% 60% / 0.05) 0px, transparent 50%);
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 40% 97%));
     --shadow-card: 0 14px 36px -18px hsl(222 47% 11% / 0.24);
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 18 100% 50%;
+    --sidebar-primary: 221 91% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 40% 94%;
     --sidebar-accent-foreground: 222 47% 11%;
     --sidebar-border: 214 32% 86%;
-    --sidebar-ring: 18 100% 50%;
+    --sidebar-ring: 221 91% 56%;
   }
 }
 
@@ -157,9 +157,22 @@
   .gradient-mesh-bg {
     background: var(--gradient-mesh);
   }
+
+  .brand-heading {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--foreground)) 12%, hsl(var(--primary)) 42%, hsl(var(--secondary)) 68%, hsl(var(--upto-red)) 100%);
+  }
+
+  .brand-subheading {
+    color: hsl(var(--secondary));
+  }
+
+  [data-theme='light'] .brand-heading {
+    background-image: linear-gradient(135deg, hsl(222 47% 11%) 10%, hsl(var(--primary)) 42%, hsl(var(--accent)) 68%, hsl(var(--upto-red)) 100%);
+  }
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)) 58%, hsl(var(--upto-red)));
   }
   .aurora-bg {
     position: absolute;
@@ -189,6 +202,7 @@
 
   .page-shell {
     position: relative;
+    min-height: calc(100vh - 74px);
   }
 
   .page-shell::before {
@@ -199,6 +213,80 @@
     background: radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 36%),
       radial-gradient(circle at top right, hsl(var(--secondary) / 0.08), transparent 32%);
     opacity: 0.9;
+  }
+
+  .page-shell > section,
+  .page-shell > main {
+    position: relative;
+    z-index: 1;
+  }
+
+  .premium-panel {
+    @apply surface-card flex h-full flex-col rounded-[2rem] p-6 sm:p-7;
+    background:
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.12), transparent 30%),
+      radial-gradient(circle at 88% 0%, hsl(var(--secondary) / 0.10), transparent 24%),
+      linear-gradient(180deg, hsl(var(--card) / 0.95), hsl(var(--card) / 0.84));
+  }
+
+  .premium-subtext {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .metric-card-premium {
+    @apply relative flex h-full flex-col overflow-hidden rounded-[1.75rem] p-5 text-white shadow-[0_22px_50px_rgba(15,23,42,0.18)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(15,23,42,0.26)];
+  }
+
+  .metric-card-copy {
+    width: min(100%, 15.5rem);
+  }
+
+  .metric-card-label {
+    @apply mt-5 text-[0.98rem] font-semibold leading-6;
+    color: rgba(255, 255, 255, 0.96);
+  }
+
+  .metric-card-value {
+    @apply mt-2 text-3xl font-black leading-[1.02] tracking-[-0.03em] md:text-4xl;
+    color: #ffffff;
+    text-wrap: balance;
+  }
+
+  .metric-card-helper {
+    @apply mt-3 text-sm leading-6;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  [data-theme='light'] .metric-card-helper,
+  [data-theme='light'] .metric-card-label,
+  [data-theme='light'] .metric-card-value {
+    text-shadow: 0 1px 14px rgba(15, 23, 42, 0.24);
+  }
+
+  .metric-symmetry-grid {
+    @apply grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4;
+  }
+
+  .dashboard-pair-grid {
+    @apply grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.9fr)];
+  }
+
+  .dashboard-triple-grid {
+    @apply grid items-stretch gap-6 xl:grid-cols-3;
+  }
+
+  .dashboard-tail-grid {
+    @apply grid items-stretch gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)];
+  }
+
+  .dashboard-main-stack,
+  .dashboard-side-stack,
+  .dashboard-card-list {
+    @apply grid gap-6;
+  }
+
+  .dashboard-card-list {
+    @apply gap-3;
   }
 }
 

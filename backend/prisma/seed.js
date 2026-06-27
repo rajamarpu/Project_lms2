@@ -206,29 +206,26 @@ const seedLearningPaths = [
 async function main() {
   console.log('Seeding database...');
   const hashedPassword = await bcrypt.hash('password123', 10);
-  
-  // 1. Create Instructors
-  const instructors = {};
-  for (const c of seedCourses) {
-    if (!instructors[c.instructorName]) {
-      const email = `${c.instructorName.toLowerCase().replace(' ', '.')}@instructor.com`;
-      let user = await prisma.user.findUnique({ where: { email } });
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            name: c.instructorName,
-            email,
-            password: hashedPassword,
-            role: 'instructor',
-            status: 'approved'
-          }
-        });
-      }
-      instructors[c.instructorName] = user;
-    }
-  }
 
-  // 2. Create Courses
+  // Keep catalog seed data owned by an admin so instructor accounts stay empty
+  // until an admin creates real instructors from the dashboard.
+  const ownerEmail = (process.env.ADMIN_EMAIL || 'admin@gmail.com').trim().toLowerCase();
+  const owner = await prisma.user.upsert({
+    where: { email: ownerEmail },
+    update: {
+      role: 'admin',
+      status: 'approved'
+    },
+    create: {
+      name: process.env.ADMIN_NAME || 'Admin',
+      email: ownerEmail,
+      password: hashedPassword,
+      role: 'admin',
+      status: 'approved'
+    }
+  });
+
+  // 1. Create Courses
   const dbCourses = {};
   for (const c of seedCourses) {
     let course = await prisma.course.findFirst({ where: { title: c.title } });
@@ -248,7 +245,7 @@ async function main() {
           gradient: c.gradient,
           icon: c.icon,
           status: c.status,
-          instructorId: instructors[c.instructorName].id,
+          instructorId: owner.id,
           celebrityTeacher: c.instructorName
         }
       });
@@ -256,7 +253,7 @@ async function main() {
     dbCourses[c.slug] = course;
   }
 
-  // 3. Create Learning Paths
+  // 2. Create Learning Paths
   for (const lp of seedLearningPaths) {
     let path = await prisma.learningPath.findUnique({ where: { slug: lp.slug } });
     if (!path) {

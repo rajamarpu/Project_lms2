@@ -2,9 +2,8 @@ const router = require('express').Router();
 const controller = require('../../controllers/parity.controller');
 const { protect, authorize } = require('../../middlewares/auth.middleware');
 
-router.get('/personalities', controller.listPersonalities);
-
 router.use(protect);
+router.get('/personalities', controller.listPersonalities);
 router.get('/live-sessions', controller.listLiveSessions);
 router.post('/live-sessions', authorize('instructor', 'admin'), controller.createLiveSession);
 router.delete('/live-sessions/:id', authorize('admin'), controller.deleteLiveSession);

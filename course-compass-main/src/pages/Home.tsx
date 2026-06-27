@@ -76,7 +76,7 @@ const Home = () => {
               <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary opacity-0 animate-fade-in">
                 <Sparkles className="h-3.5 w-3.5" /> UptoSkills LMS
               </span>
-              <h1 className="font-display text-4xl font-bold leading-tight opacity-0 animate-fade-in md:text-6xl lg:text-7xl" style={{ animationDelay: "100ms" }}>
+              <h1 className="brand-heading font-display text-4xl font-black leading-[0.98] opacity-0 animate-fade-in md:text-6xl lg:text-7xl" style={{ animationDelay: "100ms" }}>
                 Learn like a team.
                 <span className="text-gradient block">Perform like a platform.</span>
               </h1>
@@ -110,10 +110,10 @@ const Home = () => {
             </div>
 
             <div className="grid gap-4">
-              <div className="surface-card rounded-[2rem] p-6 text-foreground md:p-7">
+              <div className="premium-panel text-foreground md:p-7">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-primary">Live catalog snapshot</p>
+                    <p className="brand-subheading text-sm font-semibold">Live catalog snapshot</p>
                     <h2 className="mt-1 font-display text-2xl font-semibold text-foreground">{topCourse?.title || "Courses loading from the backend"}</h2>
                   </div>
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -147,7 +147,7 @@ const Home = () => {
 
               <div className="grid gap-4 sm:grid-cols-3">
                 {highlightStats.map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="surface-card rounded-[1.75rem] p-4 text-foreground">
+                  <div key={label} className="premium-panel rounded-[1.75rem] p-4 text-foreground">
                     <Icon className="h-5 w-5 text-primary" />
                     <p className="mt-3 text-sm font-semibold text-foreground">{label}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{value}</p>
@@ -162,7 +162,7 @@ const Home = () => {
       <section className="container pb-16">
         <div className="grid gap-4 md:grid-cols-3">
           {pillars.map(({ icon: Icon, title, text }) => (
-            <article key={title} className="surface-card rounded-[1.75rem] p-6">
+            <article key={title} className="premium-panel rounded-[1.75rem] p-6">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Icon className="h-5 w-5" />
               </div>
@@ -176,8 +176,8 @@ const Home = () => {
       <section className="container pb-16">
         <div className="mb-10 flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-primary">Trending this week</p>
-            <h2 className="mt-2 font-display text-3xl font-bold md:text-4xl">Featured learning experiences</h2>
+            <p className="brand-subheading text-sm font-semibold">Trending this week</p>
+            <h2 className="brand-heading mt-2 font-display text-3xl font-bold md:text-4xl">Featured learning experiences</h2>
           </div>
           <Link to="/courses" className="hidden text-sm font-semibold text-primary md:inline-flex">View all courses</Link>
         </div>
@@ -193,11 +193,11 @@ const Home = () => {
       </section>
 
       <section className="container pb-16">
-        <div className="surface-card overflow-hidden rounded-[2rem] p-7 md:p-10">
+        <div className="premium-panel overflow-hidden rounded-[2rem] p-7 md:p-10">
           <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center">
             <div>
-              <p className="text-sm font-semibold text-secondary">Enterprise ready</p>
-              <h2 className="mt-2 font-display text-3xl font-bold md:text-4xl">Built for learners, instructors, and teams.</h2>
+              <p className="brand-subheading text-sm font-semibold">Enterprise ready</p>
+              <h2 className="brand-heading mt-2 font-display text-3xl font-bold md:text-4xl">Built for learners, instructors, and teams.</h2>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
                 The platform already supports dashboards, certificates, reviews, community, and role-aware access. This redesign pushes those capabilities into a cleaner, faster, more premium experience.
               </p>

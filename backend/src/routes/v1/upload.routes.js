@@ -5,7 +5,7 @@ const upload = require('../../middlewares/upload.middleware');
 
 const router = express.Router();
 
-router.post('/', protect, upload.single('file'), uploadFile);
+router.post('/', protect, authorize('admin'), upload.single('file'), uploadFile);
 router.get('/media', protect, authorize('admin'), listMedia);
 router.delete('/media/:fileName', protect, authorize('admin'), deleteMedia);
 

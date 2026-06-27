@@ -18,17 +18,16 @@ export const ACCENT_STORAGE_KEY = 'admin-accent';
 export const TABS = [
   { id: 'profile', label: 'Profile', icon: MdPerson, color: '#3B82F6', rgb: '59,130,246' },
   { id: 'security', label: 'Security', icon: MdLock, color: '#EF4444', rgb: '239,68,68' },
-  { id: 'notifications', label: 'Notifications', icon: MdNotifications, color: '#F97316', rgb: '249,115,22' },
+  { id: 'notifications', label: 'Notifications', icon: MdNotifications, color: '#EF4444', rgb: '239,68,68' },
   { id: 'appearance', label: 'Appearance', icon: MdPalette, color: '#8B5CF6', rgb: '139,92,246' },
   { id: 'platform', label: 'Platform', icon: MdBusiness, color: '#06B6D4', rgb: '6,182,212' },
   { id: 'billing', label: 'Billing', icon: MdPayment, color: '#10B981', rgb: '16,185,129' },
 ];
 
 export const ACCENT_PRESETS = [
-  { id: 'purple', label: 'Purple', value: '#8B5CF6' },
   { id: 'blue', label: 'Blue', value: '#3B82F6' },
   { id: 'teal', label: 'Teal', value: '#14B8A6' },
-  { id: 'orange', label: 'Orange', value: '#F97316' },
+  { id: 'red', label: 'Red', value: '#EF4444' },
 ];
 
 export const NOTIFICATION_CATEGORIES = [
@@ -61,8 +60,8 @@ export const NOTIFICATION_CATEGORIES = [
     label: 'Certificates',
     description: 'Issued certificates and completion milestones.',
     icon: MdWorkspacePremium,
-    color: '#F59E0B',
-    rgb: '245,158,11',
+    color: '#3B82F6',
+    rgb: '59,130,246',
   },
   {
     key: 'liveClasses',
@@ -87,7 +86,7 @@ export const DEFAULT_SETTINGS = {
     themeShortcut: true,
     language: 'English (India)',
     timezone: 'Asia/Kolkata (IST)',
-    accentId: 'purple',
+    accentId: 'blue',
   },
   notifPrefs: {
     platformUpdates: true,

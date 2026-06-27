@@ -10,8 +10,16 @@ const { isStrongPassword } = require('../utils/platformRules');
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { name, password } = req.body;
-    const email = req.body.email.trim().toLowerCase();
+    const { password } = req.body;
+    const name = String(req.body.name || '').trim();
+    const email = String(req.body.email || '').trim().toLowerCase();
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, error: 'Name, email, and password are required' });
+    }
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({ success: false, error: 'Password must be 8-128 characters and include uppercase, lowercase, and a number' });
+    }
 
     // Check if user already exists
     const userExists = await prisma.user.findUnique({ where: { email } });

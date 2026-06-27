@@ -3,8 +3,9 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowRight, Clock, Layers, CheckCircle2, ChevronLeft, Map, PlayCircle } from "lucide-react";
 import { courseApi } from "@/api/course.api";
 import type { CourseView } from "@/components/common/CourseCard";
+import { resolveMediaUrl } from "@/utils/media";
 
-type CourseRecord = CourseView & { description?: string; celebrityTeacher?: string; instructor?: { name?: string }; _count?: { enrollments?: number } };
+type CourseRecord = CourseView & { description?: string; celebrityTeacher?: string; instructor?: { name?: string; avatar?: string }; _count?: { enrollments?: number } };
 type DisplayCourse = Omit<CourseView, "instructor" | "lessons" | "enrollments"> & { description?: string; instructor: string; lessons: number; enrollments: string };
 
 const LearningPathDetails = () => {
@@ -125,7 +126,7 @@ const LearningPathDetails = () => {
               <div className="flex-1 glass-card p-0 overflow-hidden border border-border/50 hover:border-primary/40 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 rounded-2xl">
                 <div className="flex flex-col sm:flex-row h-full">
                   <div className="sm:w-[40%] relative h-56 sm:h-auto overflow-hidden">
-                    <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <img src={resolveMediaUrl(course.thumbnail)} alt={course.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent sm:bg-gradient-to-r sm:from-transparent sm:to-background"></div>
                     <div className="absolute bottom-4 left-4 sm:hidden">
                       <span className="text-sm font-medium px-3 py-1.5 rounded-md bg-background/80 backdrop-blur-sm text-foreground">{course.level}</span>

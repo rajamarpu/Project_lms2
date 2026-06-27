@@ -122,8 +122,8 @@ app.get('/', (req, res) => {
 // Robust Health Check
 app.get('/health', async (req, res) => {
   try {
-    // Check DB
-    await prisma.$queryRaw`SELECT 1`;
+    // Check DB connectivity without requiring raw-query privileges.
+    await prisma.user.findFirst({ select: { id: true } });
     // Check Redis
     // await redisClient.ping();
     res.status(200).json({ status: 'ok', db: 'ok', redis: 'ok' });

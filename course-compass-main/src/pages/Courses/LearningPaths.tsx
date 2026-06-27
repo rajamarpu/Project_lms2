@@ -86,8 +86,8 @@ const LearningPaths = () => {
       ) : (
         <div className="grid gap-8 lg:grid-cols-2">
           {paths.map((path, idx) => {
-            const isOrange = path.color === "orange";
-            const accentClass = isOrange ? "from-primary to-secondary" : "from-secondary to-primary";
+            const isPrimaryPath = path.color === "blue" || path.color === "primary";
+            const accentClass = isPrimaryPath ? "from-primary to-secondary" : "from-secondary to-primary";
 
             return (
               <article
@@ -97,7 +97,7 @@ const LearningPaths = () => {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.28em] ${isOrange ? "border-primary/35 bg-primary/10 text-primary" : "border-secondary/35 bg-secondary/10 text-secondary"}`}>
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.28em] ${isPrimaryPath ? "border-primary/35 bg-primary/10 text-primary" : "border-secondary/35 bg-secondary/10 text-secondary"}`}>
                       Path
                     </span>
                     <h2 className="mt-4 font-display text-2xl font-bold">{path.title}</h2>

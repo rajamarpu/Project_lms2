@@ -21,6 +21,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { courseApi } from "@/api/course.api";
 import { platformApi } from "@/api/platform.api";
+import { resolveMediaUrl } from "@/utils/media";
 
 const levels = ["Beginner", "Intermediate", "Advanced"] as const;
 
@@ -235,8 +236,13 @@ const Courses = () => {
                     onMouseDown={() => selectSuggestion(course)}
                     className={`flex w-full items-center gap-3 border-b border-border/60 p-3 text-left last:border-0 ${activeSuggestion === index ? "bg-primary/10" : "hover:bg-muted"}`}
                   >
-                    <div className="h-12 w-16 shrink-0 overflow-hidden rounded-xl bg-muted p-1">
-                      {course.thumbnail ? <img src={course.thumbnail} alt="" className="h-full w-full object-cover" /> : <Search className="m-auto h-full w-5 text-muted-foreground" />}
+                    <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-xl bg-muted p-1">
+                      {course.thumbnail ? (
+                        <>
+                          <img src={resolveMediaUrl(course.thumbnail)} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-30 blur-md" />
+                          <img src={resolveMediaUrl(course.thumbnail)} alt="" className="relative h-full w-full object-contain" />
+                        </>
+                      ) : <Search className="m-auto h-full w-5 text-muted-foreground" />}
                     </div>
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-foreground">{course.title}</span>

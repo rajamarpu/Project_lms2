@@ -22,7 +22,6 @@ const FeatureHub = lazy(() => import('../pages/Dashboard/Admin/FeatureHub'));
 
 const ActivityLogs = persistedPage('AuditLogPage');
 const Assessments = persistedPage('AssessmentsPage');
-const Assignments = persistedPage('AssignmentsPage');
 const AuditLogs = persistedPage('AuditLogPage');
 const Billing = persistedPage('BillingPage');
 const Certificates = persistedPage('CertificatesPage');
@@ -57,7 +56,6 @@ const AppRouter = () => {
               <Route path="/dashboard/admin/courses/:courseId/edit" element={<CourseWorkspace />} />
               <Route path="/dashboard/admin/course-builder" element={<AdminCourses />} />
               <Route path="/dashboard/admin/certificates" element={<Certificates />} />
-              <Route path="/dashboard/admin/assignments" element={<Assignments />} />
               <Route path="/dashboard/admin/assessments" element={<Assessments />} />
               <Route path="/dashboard/admin/billing" element={<Billing />} />
               <Route path="/dashboard/admin/categories" element={<AdminCourses />} />
@@ -81,7 +79,6 @@ const AppRouter = () => {
               <Route path="/analytics" element={<AdminAnalytics />} />
               <Route path="/feature-hub" element={<FeatureHub />} />
               <Route path="/certificates" element={<Certificates />} />
-              <Route path="/assignments" element={<Assignments />} />
               <Route path="/assessments" element={<Assessments />} />
               <Route path="/notifications" element={<Communications />} />
               <Route path="/settings" element={<AdminSettings />} />

@@ -31,13 +31,13 @@ const SettingsKpiRow = ({
       value: `${securityScore}%`,
       sub: securityScore >= 90 ? 'Excellent' : 'Good',
       icon: MdShield,
-      iconBg: '#F97316',
+      iconBg: '#EF4444',
       gradient:
-        'linear-gradient(135deg, rgba(239,68,68,0.42) 0%, rgba(249,115,22,0.2) 100%)',
-      border: 'rgba(249,115,22,0.45)',
+        'linear-gradient(135deg, rgba(239,68,68,0.42) 0%, rgba(59,130,246,0.16) 100%)',
+      border: 'rgba(239,68,68,0.45)',
       glow: 'rgba(239,68,68,0.35)',
       progress: securityScore,
-      progressColor: '#F97316',
+      progressColor: '#EF4444',
     },
     {
       title: 'Active Sessions',

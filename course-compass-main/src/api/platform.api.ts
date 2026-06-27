@@ -44,7 +44,6 @@ export const platformApi = {
   certificates: () => API.get('/platform/certificates'),
   courseWork: (courseId: string) => API.get(`/platform/courses/${courseId}/my-work`),
   submitAssessment: (id: string, answers: Record<string, unknown>) => API.post(`/platform/assessments/${id}/submit`, { answers }),
-  submitAssignment: (id: string, data: { text?: string; fileUrl?: string }) => API.post(`/platform/assignments/${id}/submit`, data),
   verifyCertificate: (verificationId: string) => API.get(`/platform/certificates/verify/${verificationId}`),
   reviews: (courseId: string) => API.get(`/platform/reviews/${courseId}`),
   submitReview: (courseId: string, data: { rating: number; comment?: string }) => API.put(`/platform/reviews/${courseId}`, data),

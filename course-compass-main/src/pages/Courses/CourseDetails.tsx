@@ -33,6 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { platformApi } from "@/api/platform.api";
 import axios from "axios";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { resolveMediaUrl } from "@/utils/media";
 
 const tabs = ["About", "Outcomes", "Curriculum", "Instructors", "Reviews"] as const;
 type Tab = typeof tabs[number];
@@ -51,8 +52,8 @@ type CourseDetail = {
   outcomes: string[];
   lessons: Lesson[];
   celebrityTeacher?: string;
-  instructor?: { name: string };
-  instructors?: Array<{ name: string; role: string; avatar: string }>;
+  instructor?: { id?: string; name: string; avatar?: string };
+  instructors?: Array<{ name: string; role: string; avatar?: string }>;
   _count?: { enrollments: number };
 };
 type Review = { id: string; rating: number; comment?: string; createdAt: string; user: { name: string; avatar?: string } };
@@ -119,14 +120,7 @@ const CourseDetails = () => {
       const enrollment = enrollmentRes.data.data?.find((e: Enrollment) => e.courseId === id);
       setIsEnrolled(Boolean(enrollment));
       if (enrollment?.mentor) {
-        setCourse((prev) => prev ? ({
-          ...prev,
-          instructors: [{
-            name: enrollment.mentor!,
-            role: "Lead Instructor",
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(enrollment.mentor!)}`,
-          }],
-        }) : prev);
+        setSelectedMentor(enrollment.mentor);
       }
     } catch {
       // ignore transient enrollment load failures
@@ -138,8 +132,9 @@ const CourseDetails = () => {
   }, [loadCourse]);
 
   useEffect(() => {
+    if (tab !== "Reviews") return;
     void loadReviews();
-  }, [loadReviews]);
+  }, [loadReviews, tab]);
 
   useEffect(() => {
     void loadEnrollmentState();
@@ -147,9 +142,11 @@ const CourseDetails = () => {
 
   useRefreshOnFocus(() => {
     void loadCourse();
-    void loadReviews();
+    if (tab === "Reviews") {
+      void loadReviews();
+    }
     void loadEnrollmentState();
-  }, [loadCourse, loadReviews, loadEnrollmentState]);
+  }, [loadCourse, loadReviews, loadEnrollmentState, tab]);
 
   const learningObjectives = useMemo(() => {
     if (!course) return [];
@@ -193,16 +190,7 @@ const CourseDetails = () => {
     try {
       await courseApi.enrollInCourse(id!, { mentor: selectedMentor });
       setIsEnrolled(true);
-      if (selectedMentor) {
-        setCourse((prev) => prev ? ({
-          ...prev,
-          instructors: [{
-            name: selectedMentor,
-            role: "Lead Instructor",
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMentor)}`,
-          }],
-        }) : prev);
-      }
+      setSelectedMentor(selectedMentor);
       toast({
         title: "Enrolled successfully!",
         description: "You are now enrolled. Head to your dashboard to start learning.",
@@ -233,6 +221,7 @@ const CourseDetails = () => {
         description: "You have been removed from this course.",
       });
       setIsEnrolled(false);
+      setSelectedMentor("");
       navigate("/dashboard");
     } catch {
       toast({
@@ -305,7 +294,7 @@ const CourseDetails = () => {
     <div className="page-shell">
       <div className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0">
-          <img src={course.thumbnail} alt="" className="h-full w-full object-cover opacity-20 blur-2xl" />
+          <img src={resolveMediaUrl(course.thumbnail)} alt="" className="h-full w-full object-cover opacity-20 blur-2xl" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
         </div>
         <div className="container relative py-10">
@@ -356,8 +345,9 @@ const CourseDetails = () => {
             </div>
 
             <div className="glass-card overflow-hidden lg:sticky lg:top-20">
-              <div className="relative aspect-video">
-                <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
+              <div className="relative aspect-video bg-slate-950/90">
+                <img src={resolveMediaUrl(course.thumbnail)} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-2xl" />
+                <img src={resolveMediaUrl(course.thumbnail)} alt={course.title} className="relative h-full w-full object-contain p-3" />
                 <div className="absolute inset-0 flex items-center justify-center bg-background/30">
                   <PlayCircle className="h-16 w-16 text-primary drop-shadow-lg" />
                 </div>
@@ -558,7 +548,7 @@ const CourseDetails = () => {
                   {course.instructor && (
                     <div className="glass-card flex items-center gap-4 p-5">
                       <img
-                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(course.celebrityTeacher || course.instructor?.name || "Instructor")}&background=8B5CF6&color=fff&bold=true`}
+                        src={resolveMediaUrl(course.instructor?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(course.celebrityTeacher || course.instructor?.name || "Instructor")}&background=8B5CF6&color=fff&bold=true`}
                         alt={course.instructor?.name}
                         className="h-16 w-16 rounded-full border-2 border-secondary object-cover"
                       />
@@ -567,6 +557,24 @@ const CourseDetails = () => {
                         <p className="text-xs text-muted-foreground">Lead Instructor</p>
                       </div>
                     </div>
+                  )}
+                  {selectedMentor && (
+                    <div className="glass-card flex items-center gap-4 p-5">
+                      <img
+                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMentor)}&background=0F766E&color=fff&bold=true`}
+                        alt={selectedMentor}
+                        className="h-16 w-16 rounded-full border-2 border-primary object-cover"
+                      />
+                      <div>
+                        <h4 className="font-display font-semibold">{selectedMentor}</h4>
+                        <p className="text-xs text-muted-foreground">AI Mentor Companion</p>
+                      </div>
+                    </div>
+                  )}
+                  {!course.instructor && !selectedMentor && (
+                    <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                      Instructor details will appear here once the course team is assigned.
+                    </p>
                   )}
                 </div>
               )}

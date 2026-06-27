@@ -10,11 +10,11 @@ import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
  */
 const KpiCard = ({ title, value, sparklineData, sparklineColor = '#06B6D4' }) => {
   return (
-    <div className="kpi-card bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-xl p-4 hover:border-[rgba(100,255,255,0.2)] transition-colors duration-200">
+    <div className="kpi-card rounded-[1.35rem] border p-5 hover:border-[rgba(100,255,255,0.2)] transition-colors duration-200">
       <div className="flex flex-col h-full justify-between">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-[#9CA3AF]">{title}</span>
-          <span className="text-2xl font-semibold text-[#E5E7EB]">{value}</span>
+          <span className="text-sm font-medium admin-text-secondary">{title}</span>
+          <span className="text-2xl font-semibold admin-text-primary">{value}</span>
         </div>
         {sparklineData && (
           <div className="h-12 w-full mt-2">

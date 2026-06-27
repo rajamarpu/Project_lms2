@@ -53,7 +53,7 @@ export default {
         },
         navy: "hsl(var(--navy))",
         "navy-deep": "hsl(var(--navy-deep))",
-        orange: "hsl(var(--orange))",
+        "upto-red": "hsl(var(--upto-red))",
         teal: "hsl(var(--teal))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",

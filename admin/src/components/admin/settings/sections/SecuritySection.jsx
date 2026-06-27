@@ -23,16 +23,16 @@ const SecuritySection = ({ security, onUpdate, sectionRef }) => {
         animate={{ opacity: 1, scale: 1 }}
         className="rounded-3xl border p-6 md:p-8 overflow-hidden relative"
         style={{
-          borderColor: 'rgba(249,115,22,0.4)',
+          borderColor: 'rgba(239,68,68,0.4)',
           background:
-            'linear-gradient(135deg, rgba(239,68,68,0.35) 0%, rgba(249,115,22,0.22) 50%, rgba(15,23,42,0.4) 100%)',
+            'linear-gradient(135deg, rgba(239,68,68,0.35) 0%, rgba(59,130,246,0.16) 50%, rgba(15,23,42,0.4) 100%)',
           boxShadow: '0 20px 50px rgba(239,68,68,0.15)',
         }}
       >
         <div className="absolute -right-12 -top-12 w-40 h-40 rounded-full bg-[#EF4444]/20 blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-[#FED7AA] mb-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#BFDBFE] mb-2">
               Security Overview
             </p>
             <div className="flex items-end gap-2">
@@ -69,7 +69,7 @@ const SecuritySection = ({ security, onUpdate, sectionRef }) => {
             whileHover={{ boxShadow: '0 12px 36px rgba(239,68,68,0.45)' }}
             whileTap={{ scale: 0.98 }}
             className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-white shrink-0"
-            style={{ background: 'linear-gradient(135deg, #EF4444, #F97316)' }}
+            style={{ background: 'linear-gradient(135deg, #EF4444, #3B82F6)' }}
           >
             <MdShield size={20} />
             Manage Security

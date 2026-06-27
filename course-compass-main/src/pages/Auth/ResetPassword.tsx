@@ -79,7 +79,7 @@ const ResetPassword = () => {
             {[
               "Protected reset flow with the existing backend token verification.",
               "Clear status messaging and stronger form hierarchy.",
-              "Consistent UptoSkills orange and teal theme in both dark and light mode.",
+              "Consistent UptoSkills blue, teal, and red theme in both dark and light mode.",
             ].map((item) => (
               <div key={item} className="rounded-2xl border border-border bg-background/55 p-4 text-sm text-muted-foreground">
                 {item}

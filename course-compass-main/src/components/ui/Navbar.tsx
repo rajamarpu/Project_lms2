@@ -31,19 +31,19 @@ export const Navbar = () => {
   const filteredLinks = links.filter((link) => !(isStaff && hiddenForStaff.includes(link.to)));
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/80 bg-background/86 backdrop-blur-2xl">
+    <header className="sticky top-0 z-50 border-b border-border/80 bg-background/88 shadow-[0_10px_35px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
       <div className="container flex h-[74px] items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <NavLink to="/" className="flex items-center gap-3">
             <img src="/logo.webp" alt="UptoSkills Logo" className="h-10 w-auto" />
           </NavLink>
-          <div className="hidden xl:flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-2 text-xs font-medium text-muted-foreground">
+          <div className="hidden xl:flex items-center gap-2 rounded-full border border-primary/15 bg-card/80 px-3 py-2 text-xs font-semibold text-muted-foreground shadow-[var(--shadow-card)]">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             UptoSkills learning workspace
           </div>
         </div>
 
-        <nav className="hidden xl:flex items-center gap-1 rounded-full border border-border bg-card/65 px-2 py-2 shadow-[var(--shadow-card)]">
+        <nav className="hidden xl:flex items-center gap-1 rounded-full border border-border/90 bg-card/75 px-2 py-2 shadow-[var(--shadow-card)]">
           {filteredLinks.map((link) => (
             <NavLink
               key={link.to}
@@ -105,9 +105,9 @@ export const Navbar = () => {
               >
                 {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
-              <NavLink to="/profile" className="rounded-full border border-border bg-card/65 px-4 py-2 text-sm font-medium text-foreground transition hover:border-primary/30 hover:text-primary">
-                Hi, {user.name.split(" ")[0]}
-              </NavLink>
+            <NavLink to="/profile" className="rounded-full border border-border bg-card/75 px-4 py-2 text-sm font-semibold text-foreground transition hover:border-primary/30 hover:text-primary">
+              Hi, {user.name.split(" ")[0]}
+            </NavLink>
               <button onClick={handleLogout} className="text-sm text-muted-foreground hover:text-foreground">Logout</button>
             </>
           ) : (

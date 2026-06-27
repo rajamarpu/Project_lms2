@@ -69,14 +69,14 @@ const PlatformSection = ({ platform, onUpdate, accent }) => (
         </div>
         <div className="flex items-center gap-2">
           {platform.maintenanceMode && (
-            <span className="text-xs text-[#F97316] flex items-center gap-1">
+            <span className="text-xs text-[#EF4444] flex items-center gap-1">
               <MdWarning size={14} /> Active
             </span>
           )}
           <SettingsToggle
             value={platform.maintenanceMode}
             onChange={(v) => onUpdate({ maintenanceMode: v })}
-            accent="#F97316"
+            accent="#EF4444"
           />
         </div>
       </div>

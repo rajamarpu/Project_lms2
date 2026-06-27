@@ -10,6 +10,7 @@ const {
   deleteAdminCourse
 } = require('../../controllers/admin.controller');
 const { protect, authorize } = require('../../middlewares/auth.middleware');
+const upload = require('../../middlewares/upload.middleware');
 
 const router = express.Router();
 
@@ -20,8 +21,8 @@ router.use(authorize('admin')); // All admin routes are admin only
 router.route('/stats').get(getDashboardStats);
 
 // User management
-router.route('/users').get(getAdminUsers).post(createAdminUser);
-router.route('/users/:id').put(updateUserStatus).delete(deleteAdminUser);
+router.route('/users').get(getAdminUsers).post(upload.single('avatar'), createAdminUser);
+router.route('/users/:id').put(upload.single('avatar'), updateUserStatus).delete(deleteAdminUser);
 
 // Course management
 router.route('/courses').get(getAdminCourses);

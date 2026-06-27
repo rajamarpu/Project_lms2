@@ -19,8 +19,10 @@ function AdminLayoutContent() {
         style={{ marginLeft: 'var(--sidebar-width)' }}
       >
         <Navbar />
-        <main className="flex-1 overflow-y-auto bg-[var(--admin-shell-bg)] p-6">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto bg-[var(--admin-shell-bg)] px-3 py-4 sm:px-5 lg:px-6 lg:py-6">
+          <div className="mx-auto w-full max-w-[1680px]">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

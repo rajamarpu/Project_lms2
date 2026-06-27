@@ -19,7 +19,9 @@ export function applyTheme(theme) {
         : 'dark';
 
   document.documentElement.classList.toggle('light', resolved === 'light');
+  document.documentElement.classList.toggle('dark', resolved === 'dark');
   document.documentElement.dataset.theme = resolved;
+  document.documentElement.style.colorScheme = resolved;
   return resolved;
 }
 

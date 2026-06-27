@@ -2,16 +2,12 @@ import { useEffect, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
-  ClipboardCheck,
   FileQuestion,
   Loader2,
-  Clock,
   CheckCircle2,
   AlertCircle,
   Send,
   Eye,
-  Star,
-  Award,
 } from "lucide-react";
 import { platformApi } from "@/api/platform.api";
 import { ConfirmModal } from "@/components/common/ConfirmModal";
@@ -47,30 +43,10 @@ type Assessment = {
   attemptLimit: number;
 };
 
-type Submission = {
-  id: string;
-  status: string;
-  score?: number;
-  feedback?: string;
-  text?: string;
-  gradedAt?: string;
-};
-
-type Assignment = {
-  id: string;
-  title: string;
-  description: string;
-  maxPoints: number;
-  dueAt?: string;
-  submissions: Submission[];
-};
-
 export default function LearningWork() {
   const { courseId } = useParams<{ courseId: string }>();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -82,7 +58,6 @@ export default function LearningWork() {
       .courseWork(courseId!)
       .then(({ data }) => {
         setAssessments(data.data.assessments);
-        setAssignments(data.data.assignments);
       })
       .catch(() => toast.error("Course work could not be loaded."))
       .finally(() => setLoading(false));
@@ -95,14 +70,15 @@ export default function LearningWork() {
       .then(({ data }) => {
         if (active) {
           setAssessments(data.data.assessments);
-          setAssignments(data.data.assignments);
         }
       })
       .catch(() => toast.error("Course work could not be loaded."))
       .finally(() => {
         if (active) setLoading(false);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [courseId]);
 
   useRefreshOnFocus(load, [load]);
@@ -138,21 +114,6 @@ export default function LearningWork() {
     setConfirmOpen(true);
   };
 
-  const submitAssignment = async (item: Assignment) => {
-    const text = drafts[item.id]?.trim();
-    if (!text) return toast.error("Add your assignment response.");
-    setBusy(item.id);
-    try {
-      await platformApi.submitAssignment(item.id, { text });
-      toast.success("Assignment submitted.");
-      await load();
-    } catch {
-      toast.error("Assignment could not be submitted.");
-    } finally {
-      setBusy("");
-    }
-  };
-
   if (loading) {
     return (
       <div className="container flex min-h-[50vh] items-center justify-center">
@@ -173,11 +134,10 @@ export default function LearningWork() {
       <PageHeader
         icon={FileQuestion}
         label="Course Work"
-        title="Assessments & Assignments"
-        description="Submit work and review scores and instructor feedback."
+        title="Assessments"
+        description="Submit assessments and review your scores and instructor feedback."
       />
 
-      {/* Assessment Review Modal */}
       {viewingAttempt && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm p-4 pt-16 overflow-y-auto animate-fade-in">
           <div className="bg-background border border-border rounded-2xl shadow-2xl max-w-2xl w-full p-6 mb-16">
@@ -188,15 +148,16 @@ export default function LearningWork() {
                 onClick={() => setViewingAttempt(null)}
                 className="rounded-xl p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
-                ✕
+                ×
               </button>
             </div>
 
-            {/* Score Summary */}
             <div className="mb-6 rounded-2xl border border-border bg-muted/30 p-5 text-center">
-              <div className={`mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full ${
-                viewingAttempt.attempt.passed ? "bg-emerald-500/10" : "bg-destructive/10"
-              }`}>
+              <div
+                className={`mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full ${
+                  viewingAttempt.attempt.passed ? "bg-emerald-500/10" : "bg-destructive/10"
+                }`}
+              >
                 {viewingAttempt.attempt.passed ? (
                   <CheckCircle2 className="h-8 w-8 text-emerald-500" />
                 ) : (
@@ -204,12 +165,15 @@ export default function LearningWork() {
                 )}
               </div>
               <p className="text-3xl font-bold">{viewingAttempt.attempt.score ?? "—"}%</p>
-              <p className={`mt-1 text-sm font-medium ${viewingAttempt.attempt.passed ? "text-emerald-500" : "text-destructive"}`}>
+              <p
+                className={`mt-1 text-sm font-medium ${
+                  viewingAttempt.attempt.passed ? "text-emerald-500" : "text-destructive"
+                }`}
+              >
                 {viewingAttempt.attempt.passed ? "Passed" : "Not Passed"}
               </p>
             </div>
 
-            {/* Questions Review */}
             <div className="space-y-5">
               {viewingAttempt.assessment.questions.map((question, idx) => {
                 const userAnswer = (viewingAttempt.attempt.answers as Record<string, unknown>)?.[question.id];
@@ -221,7 +185,9 @@ export default function LearningWork() {
                       <p className="font-medium text-sm">
                         <span className="text-primary font-bold">Q{idx + 1}.</span> {question.prompt}
                       </p>
-                      <span className="shrink-0 text-xs font-semibold text-muted-foreground">({question.points} pt{question.points !== 1 ? "s" : ""})</span>
+                      <span className="shrink-0 text-xs font-semibold text-muted-foreground">
+                        ({question.points} pt{question.points !== 1 ? "s" : ""})
+                      </span>
                     </div>
 
                     {question.type === "mcq-single" && question.options && (
@@ -236,22 +202,44 @@ export default function LearningWork() {
                                 isCorrectOption
                                   ? "border-emerald-500/30 bg-emerald-500/5"
                                   : isUserAnswer && !isCorrectOption
-                                  ? "border-destructive/30 bg-destructive/5"
-                                  : "border-border"
+                                    ? "border-destructive/30 bg-destructive/5"
+                                    : "border-border"
                               }`}
                             >
-                              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                                isCorrectOption ? "border-emerald-500 bg-emerald-500/10" : isUserAnswer ? "border-destructive bg-destructive/10" : "border-border"
-                              }`}>
+                              <div
+                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                                  isCorrectOption
+                                    ? "border-emerald-500 bg-emerald-500/10"
+                                    : isUserAnswer
+                                      ? "border-destructive bg-destructive/10"
+                                      : "border-border"
+                                }`}
+                              >
                                 {(isCorrectOption || isUserAnswer) && (
-                                  <div className={`h-2 w-2 rounded-full ${isCorrectOption ? "bg-emerald-500" : "bg-destructive"}`} />
+                                  <div
+                                    className={`h-2 w-2 rounded-full ${
+                                      isCorrectOption ? "bg-emerald-500" : "bg-destructive"
+                                    }`}
+                                  />
                                 )}
                               </div>
-                              <span className={isCorrectOption ? "text-emerald-600 dark:text-emerald-400 font-medium" : isUserAnswer ? "text-destructive" : ""}>
+                              <span
+                                className={
+                                  isCorrectOption
+                                    ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                                    : isUserAnswer
+                                      ? "text-destructive"
+                                      : ""
+                                }
+                              >
                                 {option}
                               </span>
-                              {isCorrectOption && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-500" />}
-                              {isUserAnswer && !isCorrectOption && <AlertCircle className="ml-auto h-4 w-4 text-destructive" />}
+                              {isCorrectOption && (
+                                <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-500" />
+                              )}
+                              {isUserAnswer && !isCorrectOption && (
+                                <AlertCircle className="ml-auto h-4 w-4 text-destructive" />
+                              )}
                             </div>
                           );
                         })}
@@ -260,12 +248,18 @@ export default function LearningWork() {
 
                     {question.type === "fill-blank" && (
                       <div className="mt-3 space-y-2">
-                        <div className={`rounded-xl border p-3 text-sm ${
-                          isCorrect ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5"
-                        }`}>
-                          <p className="text-muted-foreground">Your answer: <span className="font-medium text-foreground">{String(userAnswer || "—")}</span></p>
+                        <div
+                          className={`rounded-xl border p-3 text-sm ${
+                            isCorrect ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5"
+                          }`}
+                        >
+                          <p className="text-muted-foreground">
+                            Your answer: <span className="font-medium text-foreground">{String(userAnswer || "—")}</span>
+                          </p>
                           {!isCorrect && (
-                            <p className="text-emerald-600 dark:text-emerald-400 mt-1">Correct answer: <span className="font-medium">{question.correctAnswer}</span></p>
+                            <p className="text-emerald-600 dark:text-emerald-400 mt-1">
+                              Correct answer: <span className="font-medium">{question.correctAnswer}</span>
+                            </p>
                           )}
                         </div>
                       </div>
@@ -307,7 +301,6 @@ export default function LearningWork() {
         </div>
       )}
 
-      {/* Confirm Submit Modal */}
       <ConfirmModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -318,50 +311,54 @@ export default function LearningWork() {
         loading={busy !== ""}
       />
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        {/* Assessments Section */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <FileQuestion className="h-5 w-5 text-primary" />
-            <h2 className="font-display text-xl font-semibold">Assessments</h2>
-          </div>
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <FileQuestion className="h-5 w-5 text-primary" />
+          <h2 className="font-display text-xl font-semibold">Assessments</h2>
+        </div>
 
-          {assessments.length === 0 ? (
-            <EmptyState
-              icon={FileQuestion}
-              title="No assessments"
-              description="No assessments have been published for this course yet."
-            />
-          ) : (
-            assessments.map((item) => {
-              const attemptsUsed = item.attempts.length;
-              const canAttempt = attemptsUsed < item.attemptLimit;
-              const latestAttempt = item.attempts.at(-1);
+        {assessments.length === 0 ? (
+          <EmptyState
+            icon={FileQuestion}
+            title="No assessments"
+            description="No assessments have been published for this course yet."
+          />
+        ) : (
+          assessments.map((item) => {
+            const attemptsUsed = item.attempts.length;
+            const canAttempt = attemptsUsed < item.attemptLimit;
+            const latestAttempt = item.attempts.at(-1);
 
-              return (
-                <article key={item.id} className="glass-card p-5 sm:p-6">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <h3 className="font-semibold text-lg">{item.title}</h3>
-                      {item.description && (
-                        <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
-                      )}
-                    </div>
-                    <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-                      {attemptsUsed}/{item.attemptLimit} attempts
-                    </span>
+            return (
+              <article key={item.id} className="glass-card p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="font-semibold text-lg">{item.title}</h3>
+                    {item.description && (
+                      <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                    )}
                   </div>
+                  <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                    {attemptsUsed}/{item.attemptLimit} attempts
+                  </span>
+                </div>
 
-                  {/* Questions */}
-                  <div className="mt-4 space-y-4">
-                    {item.questions.map((question) => (
-                      <fieldset key={question.id} className="rounded-xl border border-border bg-background/30 p-4">
-                        <legend className="text-sm font-medium px-2">
-                          {question.prompt} <span className="text-muted-foreground">({question.points} pt{question.points !== 1 ? "s" : ""})</span>
-                        </legend>
+                <div className="mt-4 space-y-4">
+                  {item.questions.map((question) => (
+                    <fieldset key={question.id} className="rounded-xl border border-border bg-background/30 p-4">
+                      <legend className="text-sm font-medium px-2">
+                        {question.prompt}{" "}
+                        <span className="text-muted-foreground">
+                          ({question.points} pt{question.points !== 1 ? "s" : ""})
+                        </span>
+                      </legend>
 
-                        {question.type === "mcq-single" && question.options?.map((option) => (
-                          <label key={option} className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-muted/30 transition-colors">
+                      {question.type === "mcq-single" &&
+                        question.options?.map((option) => (
+                          <label
+                            key={option}
+                            className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-muted/30 transition-colors"
+                          >
                             <input
                               type="radio"
                               name={question.id}
@@ -375,19 +372,22 @@ export default function LearningWork() {
                           </label>
                         ))}
 
-                        {question.type === "mcq-multiple" && question.options?.map((option) => {
+                      {question.type === "mcq-multiple" &&
+                        question.options?.map((option) => {
                           const selected = Array.isArray(answers[question.id]) ? (answers[question.id] as string[]) : [];
                           return (
-                            <label key={option} className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-muted/30 transition-colors">
+                            <label
+                              key={option}
+                              className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-muted/30 transition-colors"
+                            >
                               <input
                                 type="checkbox"
                                 value={option}
                                 checked={selected.includes(option)}
                                 onChange={() => {
-                                  const current = selected;
-                                  const next = current.includes(option)
-                                    ? current.filter((v) => v !== option)
-                                    : [...current, option];
+                                  const next = selected.includes(option)
+                                    ? selected.filter((v) => v !== option)
+                                    : [...selected, option];
                                   setAnswers({ ...answers, [question.id]: next });
                                 }}
                                 disabled={!canAttempt}
@@ -398,167 +398,75 @@ export default function LearningWork() {
                           );
                         })}
 
-                        {question.type === "fill-blank" && (
-                          <input
-                            type="text"
-                            value={(answers[question.id] as string) || ""}
-                            onChange={(e) => setAnswers({ ...answers, [question.id]: e.target.value })}
-                            placeholder="Your answer..."
-                            disabled={!canAttempt}
-                            className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                          />
-                        )}
+                      {question.type === "fill-blank" && (
+                        <input
+                          type="text"
+                          value={(answers[question.id] as string) || ""}
+                          onChange={(e) => setAnswers({ ...answers, [question.id]: e.target.value })}
+                          placeholder="Your answer..."
+                          disabled={!canAttempt}
+                          className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+                        />
+                      )}
 
-                        {question.type === "descriptive" && (
-                          <textarea
-                            value={(answers[question.id] as string) || ""}
-                            onChange={(e) => setAnswers({ ...answers, [question.id]: e.target.value })}
-                            placeholder="Write your answer here..."
-                            disabled={!canAttempt}
-                            className="mt-2 min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary resize-y"
-                          />
-                        )}
-                      </fieldset>
-                    ))}
-                  </div>
+                      {question.type === "descriptive" && (
+                        <textarea
+                          value={(answers[question.id] as string) || ""}
+                          onChange={(e) => setAnswers({ ...answers, [question.id]: e.target.value })}
+                          placeholder="Write your answer here..."
+                          disabled={!canAttempt}
+                          className="mt-2 min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary resize-y"
+                        />
+                      )}
+                    </fieldset>
+                  ))}
+                </div>
 
-                  {/* Attempts & Actions */}
-                  <div className="mt-5 space-y-3">
-                    {latestAttempt && (
-                      <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3 text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Latest score:</span>
-                          <span className="font-bold text-primary">{latestAttempt.score ?? "Pending"}</span>
-                          {latestAttempt.passed !== undefined && (
-                            <span className={latestAttempt.passed ? "text-emerald-500" : "text-destructive"}>
-                              · {latestAttempt.passed ? "Passed" : "Not passed"}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setViewingAttempt({ assessment: item, attempt: latestAttempt })}
-                          className="ml-auto flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80"
-                        >
-                          <Eye className="h-3.5 w-3.5" /> Review
-                        </button>
+                <div className="mt-5 space-y-3">
+                  {latestAttempt && (
+                    <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Latest score:</span>
+                        <span className="font-bold text-primary">{latestAttempt.score ?? "Pending"}</span>
+                        {latestAttempt.passed !== undefined && (
+                          <span className={latestAttempt.passed ? "text-emerald-500" : "text-destructive"}>
+                            · {latestAttempt.passed ? "Passed" : "Not passed"}
+                          </span>
+                        )}
                       </div>
-                    )}
-
-                    {canAttempt ? (
                       <button
                         type="button"
-                        className="btn-primary flex items-center gap-2"
-                        disabled={busy === item.id}
-                        onClick={() => submitAssessment(item)}
+                        onClick={() => setViewingAttempt({ assessment: item, attempt: latestAttempt })}
+                        className="ml-auto flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80"
                       >
-                        {busy === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                        {busy === item.id ? "Submitting..." : "Submit Assessment"}
+                        <Eye className="h-3.5 w-3.5" /> Review
                       </button>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">All attempts used.</p>
-                    )}
-                  </div>
-                </article>
-              );
-            })
-          )}
-        </section>
-
-        {/* Assignments Section */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-secondary" />
-            <h2 className="font-display text-xl font-semibold">Assignments</h2>
-          </div>
-
-          {assignments.length === 0 ? (
-            <EmptyState
-              icon={ClipboardCheck}
-              title="No assignments"
-              description="No assignments have been published for this course yet."
-            />
-          ) : (
-            assignments.map((item) => {
-              const submission = item.submissions[0];
-              const isGraded = submission?.status === "graded";
-              const isOverdue = item.dueAt && new Date(item.dueAt) < new Date();
-
-              return (
-                <article key={item.id} className="glass-card p-5 sm:p-6">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <h3 className="font-semibold text-lg">{item.title}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-secondary/10 px-2.5 py-1 text-xs font-semibold text-secondary">
-                      {item.maxPoints} pts
-                    </span>
-                  </div>
-
-                  {item.dueAt && (
-                    <div className={`flex items-center gap-2 text-xs mb-4 ${isOverdue && !submission ? "text-destructive" : "text-muted-foreground"}`}>
-                      <Clock className="h-3.5 w-3.5" />
-                      Due: {new Date(item.dueAt).toLocaleString()}
-                      {isOverdue && !submission && <span className="font-semibold">(Overdue)</span>}
                     </div>
                   )}
 
-                  {isGraded && submission ? (
-                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">Graded</span>
-                      </div>
-                      <p className="font-medium">Score: {submission.score}/{item.maxPoints}</p>
-                      {submission.feedback && (
-                        <p className="mt-2 text-muted-foreground">Feedback: {submission.feedback}</p>
+                  {canAttempt ? (
+                    <button
+                      type="button"
+                      className="btn-primary flex items-center gap-2"
+                      disabled={busy === item.id}
+                      onClick={() => submitAssessment(item)}
+                    >
+                      {busy === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
                       )}
-                    </div>
-                  ) : submission ? (
-                    <div className="rounded-xl bg-muted/40 p-4 text-sm">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Clock className="h-4 w-4 text-amber-400" />
-                        <span className="font-medium">Submitted · Awaiting grading</span>
-                      </div>
-                      {submission.text && (
-                        <p className="mt-1 text-muted-foreground line-clamp-3">{submission.text}</p>
-                      )}
-                    </div>
+                      {busy === item.id ? "Submitting..." : "Submit Assessment"}
+                    </button>
                   ) : (
-                    <>
-                      <label className="block text-sm font-medium mb-2">Your response</label>
-                      <textarea
-                        className="min-h-32 w-full rounded-xl border border-border bg-background p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary resize-y"
-                        value={drafts[item.id] ?? ""}
-                        onChange={(event) => setDrafts({ ...drafts, [item.id]: event.target.value })}
-                        placeholder="Write your assignment response here..."
-                      />
-                      <button
-                        type="button"
-                        className="btn-primary mt-4 flex items-center gap-2"
-                        disabled={busy === item.id || !drafts[item.id]?.trim()}
-                        onClick={() => submitAssignment(item)}
-                      >
-                        {busy === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                        {busy === item.id ? "Submitting..." : "Submit Assignment"}
-                      </button>
-                    </>
+                    <p className="text-xs text-muted-foreground">All attempts used.</p>
                   )}
-                </article>
-              );
-            })
-          )}
-        </section>
-      </div>
+                </div>
+              </article>
+            );
+          })
+        )}
+      </section>
     </div>
   );
 }

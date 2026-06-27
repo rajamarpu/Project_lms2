@@ -18,6 +18,7 @@ const CoursePlayer = lazy(() => import("@/pages/Courses/CoursePlayer"));
 const Dashboard = lazy(() => import("@/pages/Dashboard/Dashboard"));
 const Profile = lazy(() => import("@/pages/Profile/Profile"));
 const CertificatesList = lazy(() => import("@/pages/Certificate/CertificatesList"));
+const Certificate = lazy(() => import("@/pages/Certificate/Certificate"));
 const VerifyCertificate = lazy(() => import("@/pages/Certificate/VerifyCertificate"));
 const LearningWork = lazy(() => import("@/pages/Courses/LearningWork"));
 const Wishlist = lazy(() => import("@/pages/Courses/Wishlist"));
@@ -34,7 +35,11 @@ const InfoPages = lazy(() => import("@/pages/InfoPages").then(m => ({ default: m
 const SettingsPage = lazy(() => import("@/pages/InfoPages").then(m => ({ default: m.Settings })));
 const SupportPage = lazy(() => import("@/pages/InfoPages").then(m => ({ default: m.Support })));
 const FeaturesPage = lazy(() => import("@/pages/InfoPages").then(m => ({ default: m.Features })));
-const FeaturePages = lazy(() => import("@/pages/FeaturePages").then(m => ({ default: m.Community })));
+const CommunityPage = lazy(() => import("@/pages/FeaturePages").then(m => ({ default: m.Community })));
+const CommunityTopicPage = lazy(() => import("@/pages/FeaturePages").then(m => ({ default: m.CommunityTopic })));
+const LiveSessionsPage = lazy(() => import("@/pages/FeaturePages").then(m => ({ default: m.LiveSessions })));
+const AITutorsPage = lazy(() => import("@/pages/FeaturePages").then(m => ({ default: m.AITutors })));
+const QuestionPracticePage = lazy(() => import("@/pages/FeaturePages").then(m => ({ default: m.QuestionPractice })));
 
 // Loading fallback
 const PageLoader = () => (
@@ -77,15 +82,15 @@ export const AppRouter = () => {
               <Route path="/notifications" element={<LazyRoute><InfoPages /></LazyRoute>} />
               <Route path="/settings" element={<LazyRoute><SettingsPage /></LazyRoute>} />
               <Route path="/certificates" element={<LazyRoute><CertificatesList /></LazyRoute>} />
-              <Route path="/certificate/:courseId" element={<LazyRoute><CertificatesList /></LazyRoute>} />
+              <Route path="/certificate/:courseId" element={<LazyRoute><Certificate /></LazyRoute>} />
               <Route path="/courses/:courseId/work" element={<LazyRoute><LearningWork /></LazyRoute>} />
               <Route path="/wishlist" element={<LazyRoute><Wishlist /></LazyRoute>} />
               <Route path="/payments" element={<LazyRoute><Payments /></LazyRoute>} />
-              <Route path="/community" element={<LazyRoute><FeaturePages /></LazyRoute>} />
-              <Route path="/community/:topicId" element={<LazyRoute><FeaturePages /></LazyRoute>} />
-              <Route path="/live-sessions" element={<LazyRoute><FeaturePages /></LazyRoute>} />
-              <Route path="/ai-tutors" element={<LazyRoute><FeaturePages /></LazyRoute>} />
-              <Route path="/questions" element={<LazyRoute><FeaturePages /></LazyRoute>} />
+              <Route path="/community" element={<LazyRoute><CommunityPage /></LazyRoute>} />
+              <Route path="/community/:topicId" element={<LazyRoute><CommunityTopicPage /></LazyRoute>} />
+              <Route path="/live-sessions" element={<LazyRoute><LiveSessionsPage /></LazyRoute>} />
+              <Route path="/ai-tutors" element={<LazyRoute><AITutorsPage /></LazyRoute>} />
+              <Route path="/questions" element={<LazyRoute><QuestionPracticePage /></LazyRoute>} />
             </Route>
 
             {/* Admin & Instructor routes */}

@@ -93,7 +93,7 @@ const Register = () => {
             {[
               ["Guided onboarding", "Structured learning starts with a clear profile and secure account setup."],
               ["Approval-aware access", "Learner accounts can preserve your current approval flow without changing auth logic."],
-              ["Premium experience", "The same UptoSkills orange and teal visual language carries across the entire journey."],
+              ["Premium experience", "The same UptoSkills blue, teal, and red visual language carries across the entire journey."],
             ].map(([title, text]) => (
               <div key={title} className="rounded-2xl border border-border bg-background/55 p-4">
                 <div className="flex items-center gap-3">

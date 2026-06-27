@@ -2,7 +2,7 @@ const { prisma } = require('../config/db'); // Trigger restart for history endpo
 const { safePage } = require('../utils/platformRules');
 const bcrypt = require('bcryptjs');
 const { audit } = require('../services/audit.service');
-const { clearCache } = require('../middlewares/cache.middleware');
+const { clearCourseCaches } = require('../utils/courseCache');
 
 // @desc    Get dashboard statistics for admin
 // @route   GET /api/admin/stats
@@ -78,7 +78,7 @@ exports.getAdminUsers = async (req, res, next) => {
         orderBy,
         skip,
         take: limitNumber,
-        select: { id: true, name: true, email: true, role: true, status: true, createdAt: true }
+        select: { id: true, name: true, email: true, role: true, status: true, avatar: true, createdAt: true }
       }),
       prisma.user.count({ where })
     ]);
@@ -109,8 +109,19 @@ exports.createAdminUser = async (req, res, next) => {
     if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) return res.status(400).json({ success: false, error: 'A valid email is required' });
     const { isStrongPassword } = require('../utils/platformRules');
     if (!isStrongPassword(password)) return res.status(400).json({ success: false, error: 'Temporary password must be 8–128 characters with uppercase, lowercase, and a number' });
-    const user = await prisma.user.create({ data: { name: name.trim(), email: normalizedEmail, password: await bcrypt.hash(password, 10), role, status }, select: { id: true, name: true, email: true, role: true, status: true, createdAt: true } });
-    await audit(req, 'user.create', 'User', user.id, null, { email: user.email, role, status });
+    const avatar = req.file ? `/uploads/${req.file.filename}` : null;
+    const user = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        email: normalizedEmail,
+        password: await bcrypt.hash(password, 10),
+        role,
+        status,
+        ...(avatar ? { avatar } : {}),
+      },
+      select: { id: true, name: true, email: true, role: true, status: true, avatar: true, createdAt: true }
+    });
+    await audit(req, 'user.create', 'User', user.id, null, { email: user.email, role, status, avatar: user.avatar || null });
     res.status(201).json({ success: true, data: user });
   } catch (error) { next(error); }
 };
@@ -127,11 +138,12 @@ exports.updateUserStatus = async (req, res, next) => {
     const updateData = {};
     if (status) updateData.status = status;
     if (role) updateData.role = role;
+    if (req.file) updateData.avatar = `/uploads/${req.file.filename}`;
 
     const user = await prisma.user.update({
       where: { id: req.params.id },
       data: updateData,
-      select: { id: true, name: true, email: true, role: true, status: true }
+      select: { id: true, name: true, email: true, role: true, status: true, avatar: true }
     });
     if (status && status !== 'approved') await prisma.session.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });
     await audit(req, 'user.access.update', 'User', user.id, null, updateData);
@@ -215,7 +227,14 @@ exports.getAdminCourses = async (req, res, next) => {
 // @access  Private/Admin
 exports.updateCourseStatus = async (req, res, next) => {
   try {
-    const { status, scheduledAt, rejectionReason } = req.body;
+    const { scheduledAt, rejectionReason } = req.body;
+    const statusAliases = {
+      publish: 'approved',
+      published: 'approved',
+      unpublish: 'draft',
+      unpublished: 'draft',
+    };
+    const status = statusAliases[req.body.status] || req.body.status;
     const allowed = ['draft', 'pending', 'scheduled', 'approved', 'archived', 'rejected'];
     if (!allowed.includes(status)) return res.status(400).json({ success: false, error: 'Invalid course status' });
     if (status === 'scheduled' && (!scheduledAt || new Date(scheduledAt) <= new Date())) return res.status(400).json({ success: false, error: 'A future schedule date is required' });
@@ -235,7 +254,7 @@ exports.updateCourseStatus = async (req, res, next) => {
       include: { instructor: { select: { id: true, name: true } } }
     });
     await audit(req, 'course.status.update', 'Course', course.id, { status: previous.status }, lifecycle);
-    await clearCache('cache:/api/courses');
+    await clearCourseCaches();
     res.status(200).json({ success: true, data: course });
   } catch (error) {
     next(error);
@@ -251,7 +270,7 @@ exports.deleteAdminCourse = async (req, res, next) => {
     if (!previous) return res.status(404).json({ success: false, error: 'Course not found' });
     await prisma.course.delete({ where: { id: req.params.id } });
     await audit(req, 'course.delete', 'Course', previous.id, previous, null);
-    await clearCache('cache:/api/courses');
+    await clearCourseCaches();
     res.status(200).json({ success: true, data: {} });
   } catch (error) {
     next(error);

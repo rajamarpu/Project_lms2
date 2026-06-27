@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { type ElementType, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertCircle,
@@ -6,26 +6,32 @@ import {
   Award,
   BadgeCheck,
   Bell,
+  BookMarked,
   BookOpen,
+  CalendarClock,
   CheckCircle2,
+  ChevronRight,
   CircleDashed,
-  FileQuestion,
-  Heart,
+  Clock3,
+  CreditCard,
+  Flame,
+  GraduationCap,
   Layers3,
   LifeBuoy,
-  Lightbulb,
+  ListChecks,
   MapPin,
   MessageSquare,
   PlayCircle,
+  Search,
+  ShieldCheck,
   Sparkles,
+  Star,
+  Target,
   Ticket,
   TrendingUp,
   Wallet,
-  type LucideIcon,
 } from "lucide-react";
-import { CourseCard, type CourseView } from "@/components/common/CourseCard";
 import { DashboardSkeleton } from "@/components/common/LoadingSkeleton";
-import { EmptyState } from "@/components/common/EmptyState";
 import { courseApi } from "@/api/course.api";
 import { platformApi, type NotificationItem, type Preferences, type SupportTicket } from "@/api/platform.api";
 import { useAuth } from "@/store/AuthContext";
@@ -39,45 +45,15 @@ type Enrollment = {
   createdAt: string;
   updatedAt?: string;
   lastAccessedAt?: string | null;
-  lastLessonId?: string | null;
-  lastPositionSeconds?: number | null;
-  mentor?: string | null;
-  course: CourseView & {
-    description?: string;
-    lessons?: Array<{ id: string }>;
-    instructor?: { name?: string };
-    _count?: { lessons?: number; enrollments?: number };
+  course?: {
+    title?: string;
+    category?: string;
+    level?: string;
+    thumbnail?: string;
+    instructor?: {
+      name?: string;
+    };
   };
-};
-
-type CourseRecord = CourseView & {
-  description?: string;
-  _count?: { enrollments?: number };
-  instructor?: { name?: string };
-  lessons?: number | unknown[];
-  celebrityTeacher?: string;
-};
-
-type Assessment = {
-  id: string;
-  title: string;
-  description?: string;
-  attemptLimit: number;
-  dueAt?: string | null;
-  attempts: { id: string; score?: number; submittedAt?: string }[];
-  courseId?: string;
-  courseTitle?: string;
-};
-
-type Assignment = {
-  id: string;
-  title: string;
-  description: string;
-  maxPoints: number;
-  dueAt?: string | null;
-  submissions: { id: string; status: string; submittedAt?: string }[];
-  courseId?: string;
-  courseTitle?: string;
 };
 
 type PaymentRecord = {
@@ -85,150 +61,122 @@ type PaymentRecord = {
   amount: number;
   currency?: string;
   status: string;
-  providerRef?: string;
-  createdAt: string;
+  createdAt?: string;
+};
+
+type CertificateRecord = {
+  id: string;
+  status?: string;
+  issuedAt?: string;
   course?: {
-    id: string;
-    title: string;
-    category?: string;
-    thumbnail?: string;
+    title?: string;
   };
 };
 
-type Announcement = {
-  id: string;
-  title: string;
-  body: string;
-  publishedAt: string;
-  courseId?: string | null;
+const formatMoney = (amount?: number, currency = "INR") =>
+  `${currency} ${Number(amount || 0).toLocaleString("en-IN")}`;
+
+const formatDate = (value?: string | null) => {
+  if (!value) return "Not started";
+  return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 };
 
-type CourseWorkSummary = {
-  assessments: Assessment[];
-  assignments: Assignment[];
+const relativeTime = (value?: string | null) => {
+  if (!value) return "Just now";
+  const diff = Date.now() - new Date(value).getTime();
+  const minutes = Math.max(1, Math.round(diff / 60000));
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 };
 
-const fallbackImage = "https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&q=80";
-
-const formatMoney = (amount?: number, currency = "INR") => `${currency} ${Number(amount || 0).toLocaleString("en-IN")}`;
-
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : "Soon");
-
-const statusClass = (status: string) => {
-  if (["paid", "issued", "completed", "resolved"].includes(status)) return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-  if (["pending", "processing", "open", "waiting"].includes(status)) return "bg-amber-500/10 text-amber-400 border-amber-500/20";
-  if (["failed", "revoked", "closed"].includes(status)) return "bg-rose-500/10 text-rose-400 border-rose-500/20";
-  return "bg-primary/10 text-primary border-primary/20";
-};
-
-const priorityClass = (priority: string) => {
-  if (priority === "urgent") return "bg-rose-500/10 text-rose-400 border-rose-500/20";
-  if (priority === "high") return "bg-amber-500/10 text-amber-400 border-amber-500/20";
-  if (priority === "low") return "bg-sky-500/10 text-sky-400 border-sky-500/20";
-  return "bg-primary/10 text-primary border-primary/20";
-};
+const clampProgress = (value?: number) => Math.max(0, Math.min(100, Math.round(Number(value || 0))));
 
 function MetricCard({
-  icon: Icon,
   label,
   value,
   helper,
+  icon: Icon,
+  tone,
   to,
-  tone = "primary",
-  gradient = false,
 }: {
-  icon: LucideIcon;
   label: string;
   value: string | number;
   helper: string;
+  icon: ElementType;
+  tone: "blue" | "green" | "red" | "navy";
   to: string;
-  tone?: "primary" | "secondary" | "emerald" | "amber" | "slate";
-  gradient?: boolean;
 }) {
-  const toneClass = {
-    primary: "text-primary bg-primary/10 border-primary/20",
-    secondary: "text-secondary bg-secondary/10 border-secondary/20",
-    emerald: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
-    amber: "text-amber-400 bg-amber-400/10 border-amber-400/20",
-    slate: "text-sky-400 bg-sky-400/10 border-sky-400/20",
-  }[tone];
+  const tones = {
+    blue: "from-blue-700 via-blue-500 to-cyan-400",
+    green: "from-emerald-600 via-teal-500 to-cyan-400",
+    red: "from-rose-600 via-red-500 to-pink-500",
+    navy: "from-slate-950 via-blue-900 to-cyan-700",
+  };
 
   return (
     <Link
       to={to}
-      className="surface-card group relative overflow-hidden rounded-[1.8rem] p-5 text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30"
+      aria-label={`Open ${label}`}
+      className={`metric-card-premium group bg-gradient-to-br ${tones[tone]} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}
     >
-      {gradient && (
-        <div className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute -bottom-10 -left-8 h-28 w-28 rounded-full bg-secondary/10 blur-3xl" />
-        </div>
-      )}
-      <div className="relative z-10 flex items-start justify-between gap-3">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${toneClass}`}>
+      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
+      <div className="absolute bottom-0 right-0 h-24 w-24 translate-x-6 translate-y-6 rounded-full border border-white/15" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div className="rounded-2xl bg-white/18 p-3 ring-1 ring-white/25 transition group-hover:scale-105">
           <Icon className="h-5 w-5" />
         </div>
-        <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        <span className="inline-flex items-center gap-1 rounded-full bg-white/16 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85">
+          Open <ChevronRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+        </span>
       </div>
-      <p className="relative z-10 mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-      <p className="relative z-10 mt-2 text-3xl font-bold tracking-tight text-foreground">{value}</p>
-      <p className="relative z-10 mt-2 text-sm leading-6 text-muted-foreground">{helper}</p>
+      <div className="metric-card-copy relative">
+        <p className="metric-card-label">{label}</p>
+        <p className="metric-card-value">{value}</p>
+        <p className="metric-card-helper">{helper}</p>
+      </div>
     </Link>
   );
 }
 
-function SectionHeader({
-  label,
+function Panel({
   title,
-  description,
+  eyebrow,
   action,
+  children,
+  className = "",
 }: {
-  label?: string;
   title: string;
-  description?: string;
-  action?: ReactNode;
+  eyebrow?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        {label && <p className="text-sm font-semibold text-primary">{label}</p>}
-        <h2 className="mt-1 font-display text-2xl font-bold tracking-tight">{title}</h2>
-        {description && <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>}
+    <section className={`premium-panel rounded-[2rem] p-5 sm:p-6 ${className}`}>
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          {eyebrow && <p className="brand-subheading text-xs font-bold uppercase tracking-[0.18em]">{eyebrow}</p>}
+          <h2 className="brand-heading mt-1 font-display text-xl font-bold tracking-tight">{title}</h2>
+        </div>
+        {action}
       </div>
-      {action}
-    </div>
+      <div className="flex-1">{children}</div>
+    </section>
   );
 }
 
-function FeedRow({
-  icon: Icon,
-  title,
-  meta,
-  description,
-  to,
-}: {
-  icon: LucideIcon;
-  title: string;
-  meta?: string;
-  description?: string;
-  to: string;
-}) {
+function EmptyMini({ title, text, to, label }: { title: string; text: string; to: string; label: string }) {
   return (
-    <Link
-      to={to}
-      className="flex items-start gap-4 rounded-[1.4rem] border border-border bg-background/50 p-4 transition-colors hover:border-primary/30 hover:bg-background/80"
-    >
-      <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="truncate font-semibold">{title}</p>
-          {meta && <span className="text-xs text-muted-foreground">{meta}</span>}
-        </div>
-        {description && <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{description}</p>}
-      </div>
-    </Link>
+    <div className="rounded-[1.5rem] border border-dashed border-border bg-background/45 p-5 text-center">
+      <CircleDashed className="mx-auto h-8 w-8 text-primary" />
+      <h3 className="mt-3 font-semibold">{title}</h3>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{text}</p>
+      <Link to={to} className="btn-primary mt-4 inline-flex !px-4 !py-2 text-sm">
+        {label}
+      </Link>
+    </div>
   );
 }
 
@@ -236,16 +184,12 @@ export default function Dashboard() {
   const { user } = useAuth();
   const mountedRef = useRef(true);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [courses, setCourses] = useState<CourseRecord[]>([]);
-  const [recommended, setRecommended] = useState<CourseRecord[]>([]);
-  const [certificates, setCertificates] = useState<Array<{ id: string; status?: string }>>([]);
+  const [certificates, setCertificates] = useState<CertificateRecord[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [bookmarks, setBookmarks] = useState<Array<{ courseId: string; course: CourseRecord }>>([]);
+  const [bookmarks, setBookmarks] = useState<Array<{ courseId: string; course?: { title?: string } }>>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [preferences, setPreferences] = useState<Preferences | null>(null);
-  const [courseWork, setCourseWork] = useState<Record<string, CourseWorkSummary>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -257,84 +201,39 @@ export default function Dashboard() {
   );
 
   const fetchDashboardData = useCallback(async () => {
+    setError("");
     try {
-      const results = await Promise.allSettled([
+      const criticalResults = await Promise.allSettled([
         courseApi.getMyEnrollments(),
-        courseApi.getAllCourses(),
-        platformApi.certificates(),
         platformApi.notifications(),
-        platformApi.announcements(),
-        platformApi.bookmarks(),
-        platformApi.payments(),
-        platformApi.supportTickets(),
         platformApi.preferences(),
       ]);
 
       if (!mountedRef.current) return;
 
-      const enrollmentRows = results[0].status === "fulfilled" ? ((results[0].value.data?.data || []) as Enrollment[]) : [];
-      const courseRows = results[1].status === "fulfilled" ? ((results[1].value.data?.data || []) as CourseRecord[]) : [];
-      const certificateRows = results[2].status === "fulfilled" ? ((results[2].value.data?.data || []) as Array<{ id: string; status?: string }>) : [];
-      const notificationRows = results[3].status === "fulfilled" ? ((results[3].value.data?.data || []) as NotificationItem[]) : [];
-      const announcementRows = results[4].status === "fulfilled" ? ((results[4].value.data?.data || []) as Announcement[]) : [];
-      const bookmarkRows = results[5].status === "fulfilled" ? ((results[5].value.data?.data || []) as Array<{ courseId: string; course: CourseRecord }>) : [];
-      const paymentRows = results[6].status === "fulfilled" ? ((results[6].value.data?.data || []) as PaymentRecord[]) : [];
-      const ticketRows = results[7].status === "fulfilled" ? ((results[7].value.data?.data || []) as SupportTicket[]) : [];
-      const preferenceRows = results[8].status === "fulfilled" ? ((results[8].value.data?.data || null) as Preferences | null) : null;
+      setEnrollments(criticalResults[0].status === "fulfilled" ? (criticalResults[0].value.data?.data || []) : []);
+      setNotifications(criticalResults[1].status === "fulfilled" ? (criticalResults[1].value.data?.data || []) : []);
+      setPreferences(criticalResults[2].status === "fulfilled" ? (criticalResults[2].value.data?.data || null) : null);
+      setLoading(false);
 
-      setEnrollments(enrollmentRows);
-      setCourses(courseRows);
-      setCertificates(certificateRows);
-      setNotifications(notificationRows);
-      setAnnouncements(announcementRows);
-      setBookmarks(bookmarkRows);
-      setPayments(paymentRows);
-      setTickets(ticketRows);
-      setPreferences(preferenceRows);
+      void Promise.allSettled([
+        platformApi.certificates(),
+        platformApi.bookmarks(),
+        platformApi.payments(),
+        platformApi.supportTickets(),
+      ]).then((secondaryResults) => {
+        if (!mountedRef.current) return;
 
-      const activeEnrollments = enrollmentRows.filter((item) => item.progress < 100 && item.status !== "completed");
-      const courseIds = activeEnrollments.slice(0, 3).map((item) => item.courseId);
-      if (courseIds.length) {
-        const workResponses = await Promise.allSettled(courseIds.map((courseId) => platformApi.courseWork(courseId)));
-        if (mountedRef.current) {
-          const workState: Record<string, CourseWorkSummary> = {};
-          workResponses.forEach((result, index) => {
-            if (result.status !== "fulfilled") return;
-            const payload = result.value.data?.data as CourseWorkSummary | undefined;
-            if (payload) workState[courseIds[index]] = payload;
-          });
-          setCourseWork(workState);
-        }
-      } else {
-        setCourseWork({});
-      }
-
-      const enrolledIds = new Set(enrollmentRows.map((item) => String(item.courseId)));
-      const bookmarkIds = new Set(bookmarkRows.map((item) => String(item.courseId)));
-      const sortedCourses = [...courseRows].sort((a, b) => {
-        const enrollmentsA = a._count?.enrollments ?? 0;
-        const enrollmentsB = b._count?.enrollments ?? 0;
-        const ratingA = a.rating ?? 0;
-        const ratingB = b.rating ?? 0;
-        return enrollmentsB - enrollmentsA || ratingB - ratingA;
+        setCertificates(secondaryResults[0].status === "fulfilled" ? (secondaryResults[0].value.data?.data || []) : []);
+        setBookmarks(secondaryResults[1].status === "fulfilled" ? (secondaryResults[1].value.data?.data || []) : []);
+        setPayments(secondaryResults[2].status === "fulfilled" ? (secondaryResults[2].value.data?.data || []) : []);
+        setTickets(secondaryResults[3].status === "fulfilled" ? (secondaryResults[3].value.data?.data || []) : []);
       });
-
-      setRecommended(
-        sortedCourses.filter((course) => !enrolledIds.has(String(course.id))).slice(0, 6).map((course) => ({
-          ...course,
-          thumbnail: course.thumbnail || fallbackImage,
-          level: course.level || "Beginner",
-          rating: course.rating || 0,
-          enrollments: course._count?.enrollments || 0,
-          lessons: Array.isArray(course.lessons) ? course.lessons.length : Number(course.lessons || 0),
-          instructor: course.celebrityTeacher || course.instructor?.name || "Instructor",
-          bookmarked: bookmarkIds.has(String(course.id)),
-        }))
-      );
     } catch {
-      if (mountedRef.current) setError("Your learning dashboard could not be loaded. Please retry.");
-    } finally {
-      if (mountedRef.current) setLoading(false);
+      if (mountedRef.current) {
+        setError("Your learning dashboard could not be loaded. Please retry.");
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -345,14 +244,13 @@ export default function Dashboard() {
   useRefreshOnFocus(fetchDashboardData, [fetchDashboardData]);
 
   const activeEnrollments = useMemo(
-    () => enrollments.filter((item) => item.progress < 100 && item.status !== "completed"),
+    () => enrollments.filter((item) => clampProgress(item.progress) < 100 && item.status !== "completed"),
     [enrollments]
   );
   const completedEnrollments = useMemo(
-    () => enrollments.filter((item) => item.progress >= 100 || item.status === "completed"),
+    () => enrollments.filter((item) => clampProgress(item.progress) >= 100 || item.status === "completed"),
     [enrollments]
   );
-  const savedCourseIds = useMemo(() => new Set(bookmarks.map((item) => String(item.courseId))), [bookmarks]);
   const unreadNotifications = useMemo(() => notifications.filter((item) => !item.readAt), [notifications]);
   const issuedCertificates = useMemo(
     () => certificates.filter((item) => item.status === "issued" || !item.status),
@@ -360,110 +258,64 @@ export default function Dashboard() {
   );
   const paidPayments = useMemo(() => payments.filter((item) => item.status === "paid"), [payments]);
   const openTickets = useMemo(
-    () => tickets.filter((item) => !["resolved", "closed"].includes(item.status)),
+    () => tickets.filter((item) => !["closed", "resolved"].includes(item.status?.toLowerCase?.() || "")),
     [tickets]
   );
   const avgProgress = enrollments.length
-    ? Math.round(enrollments.reduce((sum, item) => sum + (item.progress || 0), 0) / enrollments.length)
+    ? Math.round(enrollments.reduce((sum, item) => sum + clampProgress(item.progress), 0) / enrollments.length)
     : 0;
-  const mostRecentActive = [...activeEnrollments].sort((a, b) => {
-    const aTime = new Date(a.lastAccessedAt || a.updatedAt || a.createdAt).getTime();
-    const bTime = new Date(b.lastAccessedAt || b.updatedAt || b.createdAt).getTime();
-    return bTime - aTime || b.progress - a.progress;
-  })[0];
-  const continueCourse = mostRecentActive || activeEnrollments[0];
-  const courseWorkItems = Object.entries(courseWork).flatMap(([courseId, work]) => {
-    const course = enrollments.find((item) => item.courseId === courseId)?.course;
-    const courseTitle = course?.title || "Your course";
-    return [
-      ...work.assessments
-        .filter((assessment) => assessment.attempts.length < assessment.attemptLimit)
-        .map((assessment) => ({
-          key: `assessment-${assessment.id}`,
-          kind: "assessment" as const,
-          title: assessment.title,
-          courseTitle,
-          courseId,
-          dueAt: assessment.dueAt || null,
-          meta: `${assessment.attempts.length}/${assessment.attemptLimit} attempts used`,
-          icon: FileQuestion,
-          to: `/courses/${courseId}/work`,
+  const continueCourse = useMemo(
+    () =>
+      [...activeEnrollments].sort((a, b) => {
+        const aTime = new Date(a.lastAccessedAt || a.updatedAt || a.createdAt).getTime();
+        const bTime = new Date(b.lastAccessedAt || b.updatedAt || b.createdAt).getTime();
+        return bTime - aTime || clampProgress(b.progress) - clampProgress(a.progress);
+      })[0],
+    [activeEnrollments]
+  );
+  const sortedEnrollments = useMemo(
+    () =>
+      [...enrollments]
+        .sort((a, b) => {
+          const aTime = new Date(a.lastAccessedAt || a.updatedAt || a.createdAt).getTime();
+          const bTime = new Date(b.lastAccessedAt || b.updatedAt || b.createdAt).getTime();
+          return bTime - aTime;
+        })
+        .slice(0, 5),
+    [enrollments]
+  );
+  const activity = useMemo(
+    () =>
+      [
+        ...notifications.map((item) => ({
+          id: `notification-${item.id}`,
+          title: item.title,
+          text: item.message,
+          time: item.createdAt,
+          icon: Bell,
+          to: item.actionUrl || "/notifications",
+          tone: "text-primary",
         })),
-      ...work.assignments
-        .filter((assignment) => !assignment.submissions.length || assignment.submissions[0]?.status !== "graded")
-        .map((assignment) => ({
-          key: `assignment-${assignment.id}`,
-          kind: "assignment" as const,
-          title: assignment.title,
-          courseTitle,
-          courseId,
-          dueAt: assignment.dueAt || null,
-          meta: `${assignment.maxPoints} points`,
+        ...tickets.map((item) => ({
+          id: `ticket-${item.id}`,
+          title: item.subject,
+          text: `${item.priority || "Normal"} priority support ticket is ${item.status}.`,
+          time: item.updatedAt || item.createdAt,
           icon: Ticket,
-          to: `/courses/${courseId}/work`,
+          to: "/support",
+          tone: "text-secondary",
         })),
-    ];
-  });
-  const nextTasks = courseWorkItems
-    .slice()
-    .sort((a, b) => new Date(a.dueAt || "2099-12-31").getTime() - new Date(b.dueAt || "2099-12-31").getTime())
-    .slice(0, 4);
-  const recentAnnouncements = announcements.slice(0, 3);
-  const recentNotifications = notifications.slice(0, 4);
-  const recentPayments = payments.slice(0, 3);
-  const recentTickets = tickets.slice(0, 3);
-
-  const stats = [
-    {
-      label: "Active courses",
-      value: activeEnrollments.length,
-      helper: "Ready to resume",
-      icon: PlayCircle,
-      to: "/courses",
-      tone: "primary" as const,
-      gradient: true,
-    },
-    {
-      label: "Completed",
-      value: completedEnrollments.length,
-      helper: "Finished learning journeys",
-      icon: CheckCircle2,
-      to: "/certificates",
-      tone: "emerald" as const,
-    },
-    {
-      label: "Certificates",
-      value: issuedCertificates.length,
-      helper: "Issued and verified",
-      icon: Award,
-      to: "/certificates",
-      tone: "amber" as const,
-    },
-    {
-      label: "Saved courses",
-      value: savedCourseIds.size,
-      helper: "Backlog and wishlist",
-      icon: Heart,
-      to: "/wishlist",
-      tone: "secondary" as const,
-    },
-    {
-      label: "Unread alerts",
-      value: unreadNotifications.length,
-      helper: "Notifications waiting",
-      icon: Bell,
-      to: "/notifications",
-      tone: "slate" as const,
-    },
-    {
-      label: "Open tickets",
-      value: openTickets.length,
-      helper: "Support requests in flight",
-      icon: LifeBuoy,
-      to: "/support",
-      tone: "amber" as const,
-    },
-  ];
+      ]
+        .sort((a, b) => new Date(b.time || 0).getTime() - new Date(a.time || 0).getTime())
+        .slice(0, 5),
+    [notifications, tickets]
+  );
+  const verifiedSpend = paidPayments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const currency = paidPayments[0]?.currency || "INR";
+  const timezone = preferences?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const todayLabel = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "2-digit", month: "short" }).format(new Date());
+  const currentCourseId = continueCourse?.courseId || sortedEnrollments[0]?.courseId;
+  const courseworkPath = currentCourseId ? `/courses/${currentCourseId}/work` : "/courses";
 
   if (loading) return <DashboardSkeleton />;
 
@@ -485,454 +337,361 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="page-shell relative overflow-hidden">
-      <div className="absolute inset-x-0 top-0 h-[34rem] bg-[radial-gradient(circle_at_20%_20%,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_80%_10%,hsl(var(--secondary)/0.18),transparent_28%),linear-gradient(180deg,transparent,transparent_55%,hsl(var(--background)))]" />
-      <div className="absolute left-0 top-0 h-80 w-80 rounded-full bg-primary/10 blur-3xl" aria-hidden />
-      <div className="absolute right-0 top-24 h-96 w-96 rounded-full bg-secondary/10 blur-3xl" aria-hidden />
+    <div className="page-shell relative min-h-[calc(100vh-74px)] overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-[38rem] bg-[radial-gradient(circle_at_15%_10%,hsl(var(--primary)/0.20),transparent_30%),radial-gradient(circle_at_82%_14%,hsl(var(--secondary)/0.22),transparent_32%),linear-gradient(180deg,hsl(var(--background)/0),hsl(var(--background))_82%)]" />
+      <div className="absolute left-12 top-28 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" aria-hidden />
+      <div className="absolute right-8 top-20 h-80 w-80 rounded-full bg-emerald-400/10 blur-3xl" aria-hidden />
 
-      <div className="container relative py-6 sm:py-8 lg:py-10">
-        <section className="mb-8 grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
-          <article className="surface-card relative overflow-hidden rounded-[2.4rem] p-6 sm:p-7 md:p-9">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,hsl(var(--primary)/0.12),transparent_28%),radial-gradient(circle_at_88%_12%,hsl(var(--secondary)/0.10),transparent_24%)]" />
-            <div className="absolute right-6 top-6 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
-            <div className="relative z-10">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Premium learner workspace
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {preferences?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
-                </span>
-              </div>
-
-              <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
-                <div className="max-w-2xl">
-                  <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-                    Welcome back, {user?.name || "Learner"}.
-                  </h1>
-                  <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
-                    A calm, premium command center for your active learning, saved courses, assessments, certificates, and support requests.
-                  </p>
+      <main className="container relative py-6 sm:py-8 lg:py-10">
+        <section className="grid gap-6 xl:grid-cols-[1.55fr_0.75fr]">
+          <article className="surface-card relative overflow-hidden rounded-[2.25rem] p-6 sm:p-8 lg:p-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,hsl(var(--primary)/0.16),transparent_28%),radial-gradient(circle_at_90%_8%,hsl(var(--secondary)/0.13),transparent_30%)]" />
+            <div className="relative z-10 grid gap-8 lg:grid-cols-[1fr_300px]">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    UptoSkills learner cockpit
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {timezone}
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    {todayLabel}
+                  </span>
                 </div>
-                <div className="flex h-16 w-16 items-center justify-center rounded-[1.5rem] border border-border bg-background/70 text-primary shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
-                  {user?.name ? (
-                    <span className="text-2xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
+
+                <h1 className="brand-heading mt-7 max-w-3xl font-display text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
+                  Keep learning with a clear next step.
+                </h1>
+                <p className="mt-4 max-w-2xl text-base leading-8 text-muted-foreground">
+                  Welcome back, {user?.name || "Learner"}. Track active courses, resume lessons, monitor certificates, and keep account support in one production-ready learning workspace.
+                </p>
+
+                <div className="mt-7 flex flex-wrap gap-3">
+                  {continueCourse ? (
+                    <Link to={`/learn/${continueCourse.courseId}`} className="btn-primary">
+                      Resume {continueCourse.course?.title || "course"} <PlayCircle className="h-4 w-4" />
+                    </Link>
                   ) : (
-                    <Lightbulb className="h-7 w-7" />
+                    <Link to="/courses" className="btn-primary">
+                      Find your first course <Search className="h-4 w-4" />
+                    </Link>
                   )}
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                <div className="rounded-[1.5rem] border border-border bg-background/60 p-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    <TrendingUp className="h-3.5 w-3.5 text-primary" />
-                    Overall progress
-                  </div>
-                  <p className="mt-3 text-3xl font-bold">{avgProgress}%</p>
-                  <div className="mt-3 h-2 rounded-full bg-muted/70">
-                    <div className="h-2 rounded-full bg-gradient-to-r from-primary to-secondary" style={{ width: `${Math.max(avgProgress, 5)}%` }} />
-                  </div>
-                </div>
-
-                <div className="rounded-[1.5rem] border border-border bg-background/60 p-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    <BookOpen className="h-3.5 w-3.5 text-primary" />
-                    Active learning
-                  </div>
-                  <p className="mt-3 text-3xl font-bold text-foreground">{activeEnrollments.length}</p>
-                  <p className="mt-2 text-sm text-muted-foreground">Current in-progress enrollments from the database.</p>
-                </div>
-
-                <div className="rounded-[1.5rem] border border-border bg-background/60 p-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    <Wallet className="h-3.5 w-3.5 text-secondary" />
-                    Verified spend
-                  </div>
-                  <p className="mt-3 text-3xl font-bold">{formatMoney(paidPayments.reduce((sum, item) => sum + Number(item.amount || 0), 0), paidPayments[0]?.currency || "INR")}</p>
-                  <p className="mt-2 text-sm text-muted-foreground">{paidPayments.length} paid transaction{paidPayments.length === 1 ? "" : "s"} linked to your account.</p>
-                </div>
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link to="/courses" className="btn-primary">
-                  Browse courses <ArrowRight className="h-4 w-4" />
-                </Link>
-                {continueCourse && (
-                  <Link to={`/learn/${continueCourse.courseId}`} className="btn-outline-teal">
-                    Continue learning <PlayCircle className="h-4 w-4" />
+                  <Link to="/learning-paths" className="btn-outline-teal">
+                    Explore paths <ArrowRight className="h-4 w-4" />
                   </Link>
-                )}
-                <Link to="/support" className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background/60 px-5 py-3 text-sm font-semibold transition-colors hover:border-primary/30 hover:bg-background/80">
-                  <LifeBuoy className="h-4 w-4 text-primary" />
-                  Get help
-                </Link>
+                  <Link to="/courses" className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background/70 px-5 py-3 text-sm font-bold transition hover:border-primary/30 hover:bg-background">
+                    Browse catalog
+                  </Link>
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-border bg-background/70 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Learning health</p>
+                    <p className="mt-1 text-2xl font-black">{avgProgress}%</p>
+                  </div>
+                  <div
+                    className="relative flex h-24 w-24 items-center justify-center rounded-full"
+                    style={{ background: `conic-gradient(hsl(var(--primary)) ${avgProgress}%, hsl(var(--muted)) 0)` }}
+                  >
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-background">
+                      <Target className="h-7 w-7 text-primary" />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Active courses</span>
+                    <span className="font-bold">{activeEnrollments.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Completed</span>
+                    <span className="font-bold">{completedEnrollments.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Unread updates</span>
+                    <span className="font-bold">{unreadNotifications.length}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </article>
 
-          <aside className="grid gap-4">
-            <div className="surface-card rounded-[2rem] p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-primary">Current momentum</p>
-                  <h2 className="mt-1 font-display text-xl font-semibold">Your learning arc</h2>
-                </div>
-                <CircleDashed className="h-5 w-5 text-primary" />
+          <aside className="surface-card rounded-[2.25rem] p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-gradient-to-br from-primary to-secondary text-xl font-black text-white shadow-lg">
+                {user?.name?.charAt(0).toUpperCase() || <GraduationCap className="h-7 w-7" />}
               </div>
-              <div className="mt-5 flex items-center gap-5">
-                <div
-                  className="relative flex h-28 w-28 items-center justify-center rounded-full"
-                  style={{
-                    background: `conic-gradient(hsl(var(--primary)) ${avgProgress}%, hsl(var(--muted)) 0)`,
-                  }}
-                >
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full border border-border bg-background text-center">
-                    <div>
-                      <p className="text-2xl font-bold">{avgProgress}%</p>
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">average</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="min-w-0 flex-1 space-y-3">
-                  <div className="rounded-2xl border border-border bg-background/50 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Next milestone</p>
-                    <p className="mt-1 font-semibold">{continueCourse?.course?.title || "Start a course to unlock your next milestone."}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {continueCourse ? `${continueCourse.progress}% complete and ready to resume.` : "Your progress timeline will appear here."}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-border bg-background/50 p-3">
-                      <BadgeCheck className="h-5 w-5 text-emerald-400" />
-                      <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground">Certificates</p>
-                      <p className="mt-1 text-xl font-bold">{issuedCertificates.length}</p>
-                    </div>
-                    <div className="rounded-2xl border border-border bg-background/50 p-3">
-                      <Bell className="h-5 w-5 text-primary" />
-                      <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground">Unread</p>
-                      <p className="mt-1 text-xl font-bold">{unreadNotifications.length}</p>
-                    </div>
-                  </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Signed in as</p>
+                <h2 className="font-display text-2xl font-black">{user?.name || "Learner"}</h2>
+                <p className="text-sm text-muted-foreground">{user?.email || "Learning account"}</p>
+              </div>
+            </div>
+              <div className="mt-6 rounded-[1.5rem] border border-border bg-background/70 p-4 shadow-[var(--shadow-card)]">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-secondary" />
+                <div>
+                  <p className="font-bold">Account ready</p>
+                  <p className="text-sm text-muted-foreground">Progress syncs when courses, payments, and support records update.</p>
                 </div>
               </div>
             </div>
-
-            <div className="surface-card rounded-[2rem] p-5 sm:p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-secondary">Support signal</p>
-                  <h2 className="mt-1 font-display text-xl font-semibold">Account activity</h2>
-                </div>
-                <Ticket className="h-5 w-5 text-secondary" />
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-border bg-background/50 p-4">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                  <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">Tickets</p>
-                  <p className="mt-1 text-2xl font-bold">{tickets.length}</p>
-                </div>
-                <div className="rounded-2xl border border-border bg-background/50 p-4">
-                  <Layers3 className="h-5 w-5 text-secondary" />
-                  <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">Bookmarks</p>
-                  <p className="mt-1 text-2xl font-bold">{bookmarks.length}</p>
-                </div>
-              </div>
-              <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                The learner dashboard now surfaces persisted account activity from the backend, so the UI reflects actual support, reminder, and saved-course state.
-              </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Link to="/certificates" className="rounded-[1.25rem] border border-border bg-background/55 p-4 transition hover:border-primary/35 hover:bg-primary/5">
+                <Award className="h-5 w-5 text-primary" />
+                <p className="mt-3 text-2xl font-black">{issuedCertificates.length}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Certificates</p>
+              </Link>
+              <Link to="/support" className="rounded-[1.25rem] border border-border bg-background/55 p-4 transition hover:border-secondary/35 hover:bg-secondary/5">
+                <LifeBuoy className="h-5 w-5 text-secondary" />
+                <p className="mt-3 text-2xl font-black">{openTickets.length}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Open tickets</p>
+              </Link>
             </div>
           </aside>
         </section>
 
-        <section aria-label="Learning metrics" className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {stats.map((item) => (
-            <MetricCard key={item.label} {...item} />
-          ))}
+        <section className="metric-symmetry-grid mt-6">
+          <MetricCard to={currentCourseId ? `/learn/${currentCourseId}` : "/courses"} label="Overall Progress" value={`${avgProgress}%`} helper={`${enrollments.length} enrolled course${enrollments.length === 1 ? "" : "s"} tracked from your account.`} icon={TrendingUp} tone="blue" />
+          <MetricCard to={currentCourseId ? `/learn/${currentCourseId}` : "/courses"} label="Active Learning" value={activeEnrollments.length} helper="Courses currently in progress and ready to continue." icon={BookOpen} tone="green" />
+          <MetricCard to="/certificates" label="Verified Certificates" value={issuedCertificates.length} helper="Issued credentials available from your certificate wallet." icon={BadgeCheck} tone="red" />
+          <MetricCard to="/payments" label="Verified Spend" value={formatMoney(verifiedSpend, currency)} helper={`${paidPayments.length} successful payment${paidPayments.length === 1 ? "" : "s"} recorded.`} icon={Wallet} tone="navy" />
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-6">
-            <section className="surface-card rounded-[2.2rem] p-5 sm:p-6">
-              <SectionHeader
-                label="Action"
-                title="Continue learning"
-                description="Resume your most recent course or jump back into the lesson that last received your attention."
-                action={
-                  <Link to="/courses" className="text-sm font-semibold text-primary">
-                    Browse catalog
-                  </Link>
-                }
-              />
-              {continueCourse ? (
-                <div className="grid gap-4 lg:grid-cols-[180px_1fr] lg:items-center">
-                  <img
-                    src={continueCourse.course.thumbnail || fallbackImage}
-                    alt={continueCourse.course.title}
-                    className="h-40 w-full rounded-[1.5rem] object-cover"
-                  />
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="rounded-full bg-primary/10 px-3 py-1 font-semibold text-primary">{continueCourse.course.category || "Course"}</span>
-                      <span className="rounded-full bg-secondary/10 px-3 py-1 font-semibold text-secondary">{continueCourse.course.level || "Beginner"}</span>
-                      {continueCourse.mentor && <span className="rounded-full bg-muted/60 px-3 py-1 font-semibold text-muted-foreground">Mentor: {continueCourse.mentor}</span>}
-                    </div>
-                    <h3 className="font-display text-2xl font-bold tracking-tight">{continueCourse.course.title}</h3>
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {continueCourse.course.description || "Your resume point is synced with the backend so progress, notes, and next steps stay consistent across devices."}
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <div className="h-2.5 flex-1 rounded-full bg-muted/70">
-                        <div className="h-2.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all" style={{ width: `${continueCourse.progress}%` }} />
-                      </div>
-                      <span className="text-sm font-semibold text-primary">{continueCourse.progress}%</span>
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                      <Link to={`/learn/${continueCourse.courseId}`} className="btn-primary !py-2.5 text-sm">
-                        Resume lesson <PlayCircle className="h-4 w-4" />
-                      </Link>
-                      <Link to={`/courses/${continueCourse.courseId}`} className="btn-outline-teal !py-2.5 text-sm">
-                        View course
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <EmptyState
-                  icon={BookOpen}
-                  title="No active courses yet"
-                  description="Enroll in a course to unlock a premium continuation panel with your next lesson, progress, and work queue."
-                  actionLabel="Find a course"
-                  actionTo="/courses"
-                />
-              )}
-            </section>
-
-            <section className="surface-card rounded-[2.2rem] p-5 sm:p-6">
-              <SectionHeader
-                label="Queue"
-                title="Assessments and assignments"
-                description="Every work item below comes from the backend and reflects what is currently due, pending, or awaiting submission."
-                action={
-                  <Link to="/learning-paths" className="text-sm font-semibold text-primary">
-                    Learning paths
-                  </Link>
-                }
-              />
-              {nextTasks.length ? (
-                <div className="space-y-3">
-                  {nextTasks.map((item) => (
-                    <FeedRow
-                      key={item.key}
-                      icon={item.icon}
-                      title={item.title}
-                      meta={`${item.courseTitle}${item.dueAt ? ` · Due ${formatDate(item.dueAt)}` : ""}`}
-                      description={item.meta}
-                      to={item.to}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  icon={FileQuestion}
-                  title="No pending work"
-                  description="Published assessments and assignments will appear here when your enrolled courses expose them."
-                  actionLabel="Browse courses"
-                  actionTo="/courses"
-                />
-              )}
-            </section>
-
-            <section className="surface-card rounded-[2.2rem] p-5 sm:p-6">
-              <SectionHeader
-                label="Discovery"
-                title="Recommended courses"
-                description="A curated, backend-sourced shortlist based on published courses you have not enrolled in yet."
-                action={
-                  <Link to="/courses" className="text-sm font-semibold text-primary">
-                    See all
-                  </Link>
-                }
-              />
-              {recommended.length ? (
-                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                  {recommended.map((course, index) => (
-                    <CourseCard key={course.id} course={course} index={index} />
-                  ))}
-                </div>
-              ) : (
-                <p className="rounded-[1.5rem] border border-dashed border-border p-10 text-center text-muted-foreground">
-                  No additional published courses are available right now.
-                </p>
-              )}
-            </section>
-          </div>
-
-          <aside className="space-y-6">
-            <section className="surface-card rounded-[2.2rem] p-5 sm:p-6">
-              <SectionHeader label="Alerts" title="Notifications" description="Unread updates from the backend, sorted newest first." />
-              <div className="space-y-3">
-                {recentNotifications.length ? (
-                  recentNotifications.map((item) => (
-                    <Link
-                      key={item.id}
-                      to={item.actionUrl || "/notifications"}
-                      className="flex gap-3 rounded-[1.3rem] border border-border bg-background/50 p-4 transition-colors hover:border-primary/30 hover:bg-background/80"
-                    >
-                      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                        <Bell className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold">{item.title}</p>
-                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.message}</p>
-                      </div>
-                    </Link>
-                  ))
-                ) : (
-                  <p className="rounded-[1.3rem] border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                    No unread notifications.
-                  </p>
-                )}
-              </div>
-              <Link to="/notifications" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-                Open notification center <ArrowRight className="h-4 w-4" />
-              </Link>
-            </section>
-
-            <section className="surface-card rounded-[2.2rem] p-5 sm:p-6">
-              <SectionHeader label="Updates" title="Announcements" description="Public platform announcements surfaced directly from the backend." />
-              <div className="space-y-3">
-                {recentAnnouncements.length ? (
-                  recentAnnouncements.map((item) => (
-                    <div key={item.id} className="rounded-[1.3rem] border border-border bg-background/50 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-semibold">{item.title}</p>
-                        <span className="text-xs text-muted-foreground">{formatDate(item.publishedAt)}</span>
-                      </div>
-                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{item.body}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="rounded-[1.3rem] border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                    No announcements available.
-                  </p>
-                )}
-              </div>
-            </section>
-
-            <section className="surface-card rounded-[2.2rem] p-5 sm:p-6">
-              <SectionHeader label="Billing" title="Payment snapshot" description="Your latest persisted billing records and access status." />
-              <div className="space-y-3">
-                {recentPayments.length ? (
-                  recentPayments.map((payment) => (
-                    <div key={payment.id} className="rounded-[1.3rem] border border-border bg-background/50 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold">{payment.course?.title || "Course payment"}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{payment.course?.category || "Billing record"}</p>
-                        </div>
-                        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusClass(payment.status)}`}>
-                          {payment.status}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between text-sm">
-                        <span className="font-semibold text-foreground">{formatMoney(payment.amount, payment.currency || "INR")}</span>
-                        <span className="text-muted-foreground">{formatDate(payment.createdAt)}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="rounded-[1.3rem] border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                    No verified payment history yet.
-                  </p>
-                )}
-              </div>
-              <Link to="/payments" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-                Open payments <ArrowRight className="h-4 w-4" />
-              </Link>
-            </section>
-
-            <section className="surface-card rounded-[2.2rem] p-5 sm:p-6">
-              <SectionHeader label="Support" title="Open tickets" description="Your persisted support requests and service status." />
-              <div className="space-y-3">
-                {recentTickets.length ? (
-                  recentTickets.map((ticket) => (
-                    <div key={ticket.id} className="rounded-[1.3rem] border border-border bg-background/50 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold">{ticket.subject}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {ticket._count?.messages || 0} message{ticket._count?.messages === 1 ? "" : "s"}
-                            {ticket.assignee?.name ? ` · ${ticket.assignee.name}` : ""}
+        <section className="dashboard-pair-grid mt-6">
+          <div className="dashboard-main-stack">
+            <Panel
+              title="Continue learning"
+              eyebrow="Course workspace"
+              action={
+                <Link to="/courses" className="text-sm font-bold text-primary hover:underline">
+                  View catalog
+                </Link>
+              }
+            >
+              {sortedEnrollments.length ? (
+                <div className="dashboard-card-list">
+                  {sortedEnrollments.map((item) => {
+                    const progress = clampProgress(item.progress);
+                    const isComplete = progress >= 100 || item.status === "completed";
+                    return (
+                      <Link
+                        key={item.id}
+                        to={`/learn/${item.courseId}`}
+                        className="group grid gap-4 rounded-[1.5rem] border border-border bg-background/55 p-4 transition hover:border-primary/35 hover:bg-primary/5 md:grid-cols-[minmax(0,1fr)_180px_auto]"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
+                              {item.course?.category || item.course?.level || "Course"}
+                            </span>
+                            <span className="rounded-full bg-secondary/10 px-2.5 py-1 text-xs font-bold text-secondary">
+                              {isComplete ? "Completed" : "In progress"}
+                            </span>
+                          </div>
+                          <h3 className="mt-3 truncate font-display text-lg font-bold">{item.course?.title || "Untitled course"}</h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {item.course?.instructor?.name ? `Mentor: ${item.course.instructor.name}` : `Last activity: ${formatDate(item.lastAccessedAt || item.updatedAt || item.createdAt)}`}
                           </p>
                         </div>
-                        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusClass(ticket.status)} ${priorityClass(ticket.priority)}`}>
-                          {ticket.priority}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between text-sm">
-                        <span className="capitalize text-muted-foreground">{ticket.status}</span>
-                        <span className="text-muted-foreground">{formatDate(ticket.createdAt)}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="rounded-[1.3rem] border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                    No support tickets yet.
-                  </p>
-                )}
-              </div>
-              <Link to="/support" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-                Open support <ArrowRight className="h-4 w-4" />
-              </Link>
-            </section>
+                        <div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="font-bold">{progress}%</span>
+                          </div>
+                          <div className="mt-2 h-2 rounded-full bg-muted">
+                            <div className="h-2 rounded-full bg-gradient-to-r from-primary to-secondary" style={{ width: `${Math.max(progress, 4)}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-bold text-background transition group-hover:bg-primary group-hover:text-primary-foreground">
+                            {isComplete ? "Review" : "Resume"} <ChevronRight className="h-4 w-4" />
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : (
+                <EmptyMini title="No active courses yet" text="Enroll in a course and your learning plan, progress, and next action will appear here." to="/courses" label="Browse courses" />
+              )}
+            </Panel>
 
-            <section className="surface-card rounded-[2.2rem] p-5 sm:p-6">
-              <SectionHeader label="Saved" title="Bookmarks" description="Courses you saved for later are backed by the platform bookmark API." />
-              <div className="space-y-3">
-                {bookmarks.length ? (
-                  bookmarks.slice(0, 3).map((bookmark) => (
-                    <Link
-                      key={bookmark.courseId}
-                      to={`/courses/${bookmark.courseId}`}
-                      className="flex items-center gap-3 rounded-[1.3rem] border border-border bg-background/50 p-3 transition-colors hover:border-primary/30 hover:bg-background/80"
-                    >
-                      <img src={bookmark.course.thumbnail || fallbackImage} alt="" className="h-12 w-14 shrink-0 rounded-xl object-cover" />
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-sm">{bookmark.course.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {bookmark.course.category || "Course"} · {bookmark.course.level || "Beginner"}
-                        </p>
+            <Panel
+              title="Learning activity"
+              eyebrow="Realtime feed"
+              action={
+                <Link to="/notifications" className="text-sm font-bold text-primary hover:underline">
+                  Open center
+                </Link>
+              }
+            >
+              {activity.length ? (
+                <div className="dashboard-card-list">
+                  {activity.map((item) => (
+                    <Link key={item.id} to={item.to} className="flex gap-3 rounded-[1.35rem] border border-border bg-background/55 p-4 transition hover:border-primary/30 hover:bg-primary/5">
+                      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-muted">
+                        <item.icon className={`h-5 w-5 ${item.tone}`} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="truncate font-bold">{item.title}</p>
+                          <span className="shrink-0 text-xs text-muted-foreground">{relativeTime(item.time)}</span>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{item.text}</p>
                       </div>
                     </Link>
-                  ))
-                ) : (
-                  <p className="rounded-[1.3rem] border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                    No saved courses yet.
-                  </p>
-                )}
+                  ))}
+                </div>
+              ) : (
+                <EmptyMini title="No recent activity" text="Notifications, ticket changes, and learning updates will appear here as they happen." to="/courses" label="Explore courses" />
+              )}
+            </Panel>
+          </div>
+
+          <div className="dashboard-side-stack">
+            <Panel title="Today's priorities" eyebrow="Action queue">
+              <div className="dashboard-card-list">
+                <Link to="/notifications" className="flex items-center justify-between rounded-[1.35rem] border border-border bg-background/55 p-4 transition hover:border-primary/35 hover:bg-primary/5">
+                  <span className="flex items-center gap-3">
+                    <Bell className="h-5 w-5 text-primary" />
+                    <span>
+                      <span className="block font-bold">Unread updates</span>
+                      <span className="text-sm text-muted-foreground">Announcements and account alerts</span>
+                    </span>
+                  </span>
+                  <span className="text-2xl font-black">{unreadNotifications.length}</span>
+                </Link>
+                <Link to="/courses" className="flex items-center justify-between rounded-[1.35rem] border border-border bg-background/55 p-4 transition hover:border-secondary/35 hover:bg-secondary/5">
+                  <span className="flex items-center gap-3">
+                    <Flame className="h-5 w-5 text-secondary" />
+                    <span>
+                      <span className="block font-bold">Resume streak</span>
+                      <span className="text-sm text-muted-foreground">Continue your latest course</span>
+                    </span>
+                  </span>
+                  <span className="text-2xl font-black">{continueCourse ? `${clampProgress(continueCourse.progress)}%` : "0%"}</span>
+                </Link>
+                <Link to="/wishlist" className="flex items-center justify-between rounded-[1.35rem] border border-border bg-background/55 p-4 transition hover:border-primary/35 hover:bg-primary/5">
+                  <span className="flex items-center gap-3">
+                    <BookMarked className="h-5 w-5 text-primary" />
+                    <span>
+                      <span className="block font-bold">Saved courses</span>
+                      <span className="text-sm text-muted-foreground">Shortlisted learning options</span>
+                    </span>
+                  </span>
+                  <span className="text-2xl font-black">{bookmarks.length}</span>
+                </Link>
               </div>
-              <Link to="/wishlist" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-                Open wishlist <ArrowRight className="h-4 w-4" />
-              </Link>
-            </section>
-          </aside>
+            </Panel>
+
+            <Panel title="Account operations" eyebrow="Payments & support">
+              <div className="dashboard-card-list">
+                <Link to="/payments" className="rounded-[1.35rem] border border-border bg-background/55 p-4 transition hover:border-primary/35 hover:bg-primary/5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-3 font-bold">
+                      <CreditCard className="h-5 w-5 text-primary" />
+                      Payments
+                    </span>
+                    <span className="text-xl font-black">{formatMoney(verifiedSpend, currency)}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{paidPayments.length} successful transaction{paidPayments.length === 1 ? "" : "s"} available for review.</p>
+                </Link>
+                <Link to="/support" className="rounded-[1.35rem] border border-border bg-background/55 p-4 transition hover:border-secondary/35 hover:bg-secondary/5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-3 font-bold">
+                      <MessageSquare className="h-5 w-5 text-secondary" />
+                      Support
+                    </span>
+                    <span className="text-xl font-black">{openTickets.length}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">Open requests connected to your learner account.</p>
+                </Link>
+                <Link to={courseworkPath} className="rounded-[1.35rem] border border-border bg-background/55 p-4 transition hover:border-primary/35 hover:bg-primary/5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-3 font-bold">
+                      <ListChecks className="h-5 w-5 text-primary" />
+                      Coursework
+                    </span>
+                    <CheckCircle2 className="h-5 w-5 text-secondary" />
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">Open assessments and assignments for your current course.</p>
+                </Link>
+              </div>
+            </Panel>
+          </div>
         </section>
 
-        {activeEnrollments.length === 0 && recommended.length === 0 && recentNotifications.length === 0 && (
-          <div className="mt-8">
-            <EmptyState
-              icon={BookOpen}
-              title="Your dashboard is ready"
-              description="Enroll in a course or open the catalog to populate your learning workspace with backend-sourced activity."
-              actionLabel="Explore courses"
-              actionTo="/courses"
-            />
-          </div>
-        )}
-      </div>
+        <section className="dashboard-triple-grid mt-6">
+          <Panel
+            title="Credential wallet"
+            eyebrow="Certificates"
+            action={
+              <Link to="/certificates" className="text-sm font-bold text-primary hover:underline">
+                View all
+              </Link>
+            }
+          >
+            {issuedCertificates.length ? (
+              <div className="dashboard-card-list">
+                {issuedCertificates.slice(0, 4).map((item) => (
+                  <Link key={item.id} to="/certificates" className="flex items-center gap-3 rounded-[1.35rem] border border-border bg-background/55 p-4 transition hover:border-secondary/35 hover:bg-secondary/5">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary/10">
+                      <Award className="h-5 w-5 text-secondary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-bold">{item.course?.title || "UptoSkills certificate"}</p>
+                      <p className="text-sm text-muted-foreground">Issued {formatDate(item.issuedAt)}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <EmptyMini title="No certificates yet" text="Complete a course to unlock verified credentials in this wallet." to="/courses" label="Start learning" />
+            )}
+          </Panel>
+
+          <Panel title="Learning plan" eyebrow="Milestones">
+            <div className="space-y-4">
+              {[
+                { label: "Enroll in a course", done: enrollments.length > 0 },
+                { label: "Reach 50% average progress", done: avgProgress >= 50 },
+                { label: "Complete a course", done: completedEnrollments.length > 0 },
+                { label: "Earn a certificate", done: issuedCertificates.length > 0 },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-3">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-full ${item.done ? "bg-secondary text-white" : "bg-muted text-muted-foreground"}`}>
+                    {item.done ? <CheckCircle2 className="h-5 w-5" /> : <Clock3 className="h-5 w-5" />}
+                  </div>
+                  <span className={`font-semibold ${item.done ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="Saved learning pipeline" eyebrow="Wishlist">
+            {bookmarks.length ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {bookmarks.slice(0, 4).map((item) => (
+                  <Link key={item.courseId} to={`/courses/${item.courseId}`} className="rounded-[1.35rem] border border-border bg-background/55 p-4 transition hover:border-primary/35 hover:bg-primary/5">
+                    <Star className="h-5 w-5 text-primary" />
+                    <p className="mt-3 truncate font-bold">{item.course?.title || "Saved course"}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Review this course from your saved list.</p>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <EmptyMini title="No saved courses" text="Save interesting courses to build a personal learning pipeline." to="/courses" label="Browse catalog" />
+            )}
+          </Panel>
+        </section>
+      </main>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/store/AuthContext";
 import { platformApi } from "@/api/platform.api";
 import { toast } from "sonner";
+import { resolveMediaUrl } from "@/utils/media";
 
 const FALLBACK = "https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&q=80";
 
@@ -11,7 +12,7 @@ const levelStyles: Record<string, { bg: string; border: string; color: string }>
   Beginner: { bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.35)', color: '#10B981' },
   Intermediate: { bg: 'rgba(59,130,246,0.15)', border: 'rgba(59,130,246,0.35)', color: '#3B82F6' },
   Advanced: { bg: 'rgba(139,92,246,0.15)', border: 'rgba(139,92,246,0.35)', color: '#8B5CF6' },
-  Expert: { bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.35)', color: '#F59E0B' },
+  Expert: { bg: 'rgba(239,68,68,0.14)', border: 'rgba(239,68,68,0.32)', color: '#EF4444' },
 };
 
 export interface CourseView {
@@ -25,7 +26,7 @@ export interface CourseView {
   rating?: number;
   progress?: number;
   celebrityTeacher?: string;
-  instructor?: string | { name?: string };
+  instructor?: string | { name?: string; avatar?: string };
   lessons?: number | unknown[];
   enrollments?: number;
   _count?: { enrollments?: number };
@@ -49,7 +50,7 @@ export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: 
   const [bookmarked, setBookmarked] = useState(Boolean(course.bookmarked));
   const [bookmarking, setBookmarking] = useState(false);
   const lvl = levelStyles[course.level] || levelStyles.Beginner;
-  const thumbnail = !imgError && course.thumbnail ? course.thumbnail : FALLBACK;
+  const thumbnail = !imgError && course.thumbnail ? resolveMediaUrl(course.thumbnail) : FALLBACK;
 
   const fullStars = Math.floor(course.rating || 0);
   const showProgress = course.progress !== undefined;
@@ -100,9 +101,16 @@ export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: 
         <Link to={`/courses/${course.id}`} className="relative h-40 overflow-hidden shrink-0 bg-muted">
           <img
             src={thumbnail}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-30 blur-xl"
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.08),rgba(2,6,23,0.72))]" />
+          <img
+            src={thumbnail}
             alt={course.title}
             onError={() => setImgError(true)}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-700 group-hover:scale-[1.04]"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
           <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 mix-blend-overlay" />
@@ -161,7 +169,7 @@ export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: 
               icon={Users}
               label="Enrolled"
               value={course._count?.enrollments ?? course.enrollments ?? 0}
-              accent="#FF6B35"
+              accent="#3B82F6"
             />
             <Stat
               icon={TrendingUp}
@@ -177,7 +185,7 @@ export const CourseCard = ({ course, index = 0 }: { course: CourseView; index?: 
                  className="h-full rounded-full transition-all duration-1000 ease-out"
                  style={{
                    width: `${progressVal}%`,
-                   background: "linear-gradient(90deg, #FF6B35, #14B8A6)",
+                   background: "linear-gradient(90deg, #3B82F6, #14B8A6)",
                  }}
                />
              </div>

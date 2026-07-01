@@ -91,10 +91,7 @@ const InstructorPortal = () => {
   });
   const [lessonLoading, setLessonLoading] = useState(false);
 
-  // ── Guard ──────────────────────────────────────────────────────────────────
-  if (user?.role !== "admin") {
-    return <Navigate to="/" replace />;
-  }
+  // ── Guard moved below hooks ───────────────────────────────────────────────
 
   // ── Fetch courses ──────────────────────────────────────────────────────────
   const fetchCourses = useCallback(async () => {
@@ -104,7 +101,7 @@ const InstructorPortal = () => {
       const all: CourseItem[] = res.data.data;
       // Instructors see only their own; admins see all
       const filtered =
-        user.role === "admin"
+        user?.role === "admin"
           ? all
           : all; // Admin sees all by default in this view, though they can manage anything
       setCourses(filtered);
@@ -114,7 +111,7 @@ const InstructorPortal = () => {
 
       // Fetch revenue
       try {
-        if (user.role === "admin") {
+        if (user?.role === "admin") {
           const { adminApi } = await import("@/api/admin.api");
           const statsRes = await adminApi.getStats();
           if (statsRes.success) {
@@ -134,7 +131,7 @@ const InstructorPortal = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user.id, user.role]);
+  }, [user?.id, user?.role]);
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
@@ -180,6 +177,11 @@ const InstructorPortal = () => {
   };
 
   // ─────────────────────────────────────────────────────────────────────────
+  
+  if (user?.role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
+  
   const totalEnrollments = courses.reduce((s, c) => s + (c._count?.enrollments ?? 0), 0);
   const totalLessons = courses.reduce((s, c) => s + (c.lessons?.length ?? 0), 0);
 

@@ -9,8 +9,8 @@ exports.getCourses = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', search, category, level } = req.query;
 
-    const pageNumber = parseInt(page, 10);
-    const limitNumber = parseInt(limit, 10);
+    const pageNumber = parseInt(page, 10) || 1;
+    const limitNumber = parseInt(limit, 10) || 50;
     const skip = (pageNumber - 1) * limitNumber;
 
     const where = { status: 'approved' };
@@ -36,8 +36,7 @@ exports.getCourses = async (req, res, next) => {
         where,
         include: {
           instructor: { select: { id: true, name: true, email: true } },
-          lessons: true,
-          _count: { select: { enrollments: true } }
+          _count: { select: { enrollments: true, lessons: true } }
         },
         skip,
         take: limitNumber,
@@ -115,7 +114,7 @@ exports.createCourse = async (req, res, next) => {
       xp: xp || '1000 XP',
       gradient: gradient || 'from-blue-600 via-blue-500 to-cyan-400',
       icon: icon || '🤖',
-      status: status || 'approved',
+      status: (req.user.role === 'admin' ? status || 'approved' : 'pending'),
       instructorId: req.user.id
     };
 

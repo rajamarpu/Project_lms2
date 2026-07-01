@@ -6,7 +6,9 @@ exports.registerUser = async ({ name, email, password, role, verificationOTP, ve
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  const userRole = role || 'user';
+  // Cap role: public registration may not self-assign admin
+  const allowedRoles = ['user', 'instructor'];
+  const userRole = allowedRoles.includes(role) ? role : 'user';
   const userStatus = 'approved';
 
   const user = await prisma.user.create({

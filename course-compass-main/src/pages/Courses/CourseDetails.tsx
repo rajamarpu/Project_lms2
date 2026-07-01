@@ -14,6 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CELEBRITIES } from "@/lib/constants";
 import { courseApi } from "@/api/course.api";
 import { useAuth } from "@/store/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -59,7 +61,7 @@ const CourseDetails = () => {
   // Mentor Selection State
   const [mentorSelectionOpen, setMentorSelectionOpen] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState("");
-  const celebrities = ["Virat Kohli", "Salman Khan", "Narendra Modi", "Sachin Tendulkar", "Hardik Pandya", "Virtual Mentor"];
+  const celebrities = CELEBRITIES;
 
   // Wishlist state
   const [isWishlisted, setIsWishlisted] = useState(false);

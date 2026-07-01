@@ -57,8 +57,8 @@ exports.getMyEnrollments = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', search, status } = req.query;
 
-    const pageNumber = parseInt(page, 10);
-    const limitNumber = parseInt(limit, 10);
+    const pageNumber = parseInt(page, 10) || 1;
+    const limitNumber = parseInt(limit, 10) || 50;
     const skip = (pageNumber - 1) * limitNumber;
 
     const where = { userId: req.user.id };

@@ -248,7 +248,7 @@ const CourseDrawer = ({ isOpen, onClose, onSave, courseToEdit }) => {
 
   // Filtered teachers list based on search
   const filteredTeachers = teachers.filter(t => 
-    t.name.toLowerCase().includes(searchTeacherQuery.toLowerCase())
+    t.name?.toLowerCase().includes(searchTeacherQuery.toLowerCase())
   );
 
   const inputCls = 'w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 focus:bg-white/8 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300';

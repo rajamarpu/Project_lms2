@@ -11,6 +11,7 @@ import AdminTeachers from '../pages/Dashboard/Admin/Teachers';
 import AdminAnalytics from '../pages/Dashboard/Admin/Analytics';
 import AdminReviews from '../pages/Dashboard/Admin/Reviews';
 import AdminNotifications from '../pages/Dashboard/Admin/Notifications';
+import AdminUsers from '../pages/Dashboard/Admin/Users';
 import AdminSettings from '../pages/Dashboard/Admin/Settings';
 
 // Route Guards
@@ -34,6 +35,7 @@ const AppRouter = () => {
             <Route path="/dashboard/admin/analytics" element={<AdminAnalytics />} />
             <Route path="/dashboard/admin/reviews" element={<AdminReviews />} />
             <Route path="/dashboard/admin/notifications" element={<AdminNotifications />} />
+            <Route path="/dashboard/admin/users" element={<AdminUsers />} />
             <Route path="/dashboard/admin/settings" element={<AdminSettings />} />
           </Route>
         </Route>

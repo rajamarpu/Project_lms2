@@ -8,7 +8,8 @@ import logo from '../../assets/logo.webp';
 import { auth, googleProvider } from '../../firebase-config';
 import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
 
-const allowedAdmins = ["admin@gmail.com"]; // add more approved admin emails here
+// Admin email check is done server-side via role field
+
 
 const techIcons = [
   // Left side
@@ -38,34 +39,41 @@ const AdminLogin = () => {
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      console.log('Google sign-in result:', result);
       const user = result.user;
-      if (allowedAdmins.includes(user.email)) {
+      // Get ID token and verify via backend
+      const idToken = await user.getIdToken();
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      });
+      const data = await response.json();
+      if (data.success && data.user?.role === 'admin') {
         localStorage.setItem('role', 'admin');
+        localStorage.setItem('admin_token', data.token);
         navigate('/dashboard/admin');
       } else {
-        setError('Unauthorized: This email is not an admin account.');
+        setError('Unauthorized: This account does not have admin access.');
       }
     } catch (err) {
       console.error('Google sign-in error:', err);
-      setError('Google sign‑in failed. Please try again.');
+      setError('Google sign-in failed. Please use email/password login.');
     }
   };
 
   const handleClose = () => {
-    // Reset form fields
     setEmail('');
     setPassword('');
     setError('');
-    // Navigate back to home or desired location
-    window.location.href = 'http://localhost:5173';
+    navigate('/');
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -126,9 +134,10 @@ const AdminLogin = () => {
           <img src={logo} alt="UptoSkills Logo" className="mx-auto h-12 mb-4" />
           <h2 className="text-3xl font-bold text-[#f8fafc] mb-2 tracking-tight">Admin Sign In</h2>
           <p className="text-[#cbd5e1] text-sm mb-4">Enter your credentials to access the dashboard</p>
+
           <div className="bg-blue-500/10 border border-blue-500/30 p-2.5 rounded-lg text-xs text-blue-200 flex flex-col gap-1 items-center justify-center">
-            <span className="font-semibold text-blue-400 uppercase tracking-wider text-[10px]">Test Credentials</span>
-            <span>Email: <strong>admin@gmail.com</strong></span>
+            <span className="font-semibold text-blue-400 uppercase tracking-wider text-[10px]">Development Test Credentials</span>
+            <span>Email: <strong>admin@uptoskills.com</strong></span>
             <span>Password: <strong>admin123</strong></span>
           </div>
         </div>

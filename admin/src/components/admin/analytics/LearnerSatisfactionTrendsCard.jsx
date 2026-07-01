@@ -351,7 +351,7 @@ const LearnerSatisfactionTrendsCard = ({ satisfactionData, isLoading = false, co
   // Determine which content to render
   const shouldShowSkeleton =
     isLoading === true ||
-    satisfactionData === undefined ||
+    !satisfactionData ||
     !satisfactionData[activeFilter];
 
   const shouldShowEmpty =

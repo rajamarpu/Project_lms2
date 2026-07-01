@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Mail, Sparkles, Loader2 } from "lucide-react";
-import axios from "axios";
+import API from "@/api/client";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useAuth } from "@/store/AuthContext";
 
@@ -29,7 +29,7 @@ const VerifyEmail = () => {
 
     setStatus("loading");
     try {
-      const response = await axios.post(`${API_URL}/auth/verify-email`, { email, otp });
+      const response = await API.post(`/auth/verify-email`, { email, otp });
       setStatus("success");
       setMessage("Email verified successfully! Logging you in...");
       
@@ -50,7 +50,7 @@ const VerifyEmail = () => {
     setStatus("idle");
     setMessage("");
     try {
-      await axios.post(`${API_URL}/auth/resend-verification`, { email });
+      await API.post(`/auth/resend-verification`, { email });
       setStatus("idle");
       setMessage("A new verification code has been sent to your email.");
     } catch (err: any) {

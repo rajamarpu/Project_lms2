@@ -5,11 +5,12 @@ import {
   Save, Edit2, AlertTriangle, CheckCircle2, GraduationCap,
   Users, BarChart3, X, Sparkles
 } from "lucide-react";
+import { CELEBRITIES } from "@/lib/constants";
 import { courseApi } from "@/api/course.api";
 import { useAuth } from "@/store/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
-const celebrities = ["Virat Kohli", "Salman Khan", "Narendra Modi", "Sachin Tendulkar", "Hardik Pandya"];
+const celebrities = CELEBRITIES;
 const levels      = ["Beginner", "Intermediate", "Advanced"];
 const categories  = ["Python", "CSS", "MERN Stack", "Data Science", "AI & Machine Learning"];
 
@@ -81,8 +82,7 @@ const ManageCourse = () => {
   const [deleteLessonLoading, setDeleteLessonLoading] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
 
-  // ── Guard ──────────────────────────────────────────────────────────────────
-  if (user?.role !== "admin") return <Navigate to="/" replace />;
+  // ── Guard moved below hooks ───────────────────────────────────────────────
 
   // ── Load course ────────────────────────────────────────────────────────────
   const load = async () => {
@@ -194,6 +194,8 @@ const ManageCourse = () => {
       setGeneratingAI(false);
     }
   };
+
+  if (user?.role !== "admin") return <Navigate to="/" replace />;
 
   if (isLoading) return (
     <div className="flex items-center justify-center py-32">

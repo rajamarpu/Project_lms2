@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { KeyRound, Sparkles, Loader2 } from "lucide-react";
-import axios from "axios";
+import API from "@/api/client";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -26,7 +26,7 @@ const VerifyResetOtp = () => {
 
     setStatus("loading");
     try {
-      const response = await axios.post(`${API_URL}/auth/verify-reset-otp`, { email, otp });
+      const response = await API.post(`/auth/verify-reset-otp`, { email, otp });
       const { id, token } = response.data;
       navigate(`/reset-password/${id}/${token}`);
     } catch (err: any) {
@@ -81,14 +81,13 @@ const VerifyResetOtp = () => {
                 maxLength={6}
                 value={otp}
                 onChange={setOtp}
-                render={({ slots }) => (
-                  <InputOTPGroup className="gap-2">
-                    {slots.map((slot, index) => (
-                      <InputOTPSlot key={index} {...slot} className="w-12 h-14 text-lg border bg-muted/40 rounded-md" />
-                    ))}
-                  </InputOTPGroup>
-                )}
-              />
+              >
+                <InputOTPGroup className="gap-2">
+                  {[...Array(6)].map((_, index) => (
+                    <InputOTPSlot key={index} index={index} className="w-12 h-14 text-lg border bg-muted/40 rounded-md" />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
             </div>
 
             {/* Submit Button */}

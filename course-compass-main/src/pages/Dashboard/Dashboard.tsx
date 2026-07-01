@@ -4,9 +4,11 @@ import { Award, BookOpen, Clock, Flame, ChevronLeft, ChevronRight, Trophy, Star,
 import { CourseCard } from "@/components/common/CourseCard";
 import { useAuth } from "@/store/AuthContext";
 import { courseApi } from "@/api/course.api";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const [inProgress, setInProgress] = useState<any[]>([]);
@@ -17,8 +19,8 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         const [enrollRes, coursesRes] = await Promise.all([
-          courseApi.getMyEnrollments().catch(() => ({ data: { data: [] } })),
-          courseApi.getAllCourses().catch(() => ({ data: { data: [] } }))
+          courseApi.getMyEnrollments(),
+          courseApi.getAllCourses()
         ]);
         
         const enrollments = enrollRes.data.data;
@@ -48,8 +50,9 @@ const Dashboard = () => {
           }));
           
         setRecommended(unEnrolled.slice(0, 6));
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
+        toast({ title: "Failed to load dashboard data", description: err?.response?.data?.error || "A network error occurred.", variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
@@ -64,21 +67,28 @@ const Dashboard = () => {
     carouselRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
   };
 
+  // Compute real stats from enrollment data
+  const certificatesEarned = inProgress.filter((c: any) => c.progress === 100).length;
+  // Approximate hours from progress: average 10 hours per course
+  const hoursLearned = Math.round(inProgress.reduce((sum: number, c: any) => sum + (c.progress / 100) * 10, 0));
+
   const stats = [
     { icon: BookOpen, label: "Courses Enrolled", val: inProgress.length, color: "text-primary" },
-    { icon: Clock, label: "Hours Learned", val: user?.hoursLearned || 0, color: "text-secondary" },
-    { icon: Award, label: "Certificates", val: user?.certificates || 0, color: "text-primary" },
+    { icon: Clock, label: "Hours Learned", val: hoursLearned, color: "text-secondary" },
+    { icon: Award, label: "Certificates", val: certificatesEarned, color: "text-primary" },
     { icon: Flame, label: "Day Streak", val: user?.streak || 0, color: "text-secondary" },
   ];
 
+  // Achievements derived from real enrollment data
   const achievements = [
-    { icon: Trophy, name: "First Course", earned: true },
-    { icon: Star, name: "5-Star Rating", earned: true },
-    { icon: Zap, name: "10-Day Streak", earned: true },
-    { icon: Target, name: "Goal Crusher", earned: true },
-    { icon: Medal, name: "Top Learner", earned: false },
-    { icon: Award, name: "AI Master", earned: false },
+    { icon: Trophy, name: "First Course", earned: inProgress.length >= 1 },
+    { icon: Star, name: "5-Star Student", earned: inProgress.length >= 3 },
+    { icon: Zap, name: "Course Finisher", earned: certificatesEarned >= 1 },
+    { icon: Target, name: "Goal Crusher", earned: inProgress.some((c: any) => c.progress >= 50) },
+    { icon: Medal, name: "Top Learner", earned: inProgress.some((c: any) => c.progress === 100) },
+    { icon: Award, name: "AI Master", earned: inProgress.some((c: any) => c.category?.toLowerCase().includes('ai') || c.category?.toLowerCase().includes('machine learning')) },
   ];
+
 
   return (
     <div className="container py-10">

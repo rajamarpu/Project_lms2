@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, ArrowLeft, Sparkles } from "lucide-react";
-import axios from "axios";
+import API from "@/api/client";
 
-// Assuming standard API config, matching Login.tsx
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -22,7 +20,7 @@ const ForgotPassword = () => {
 
     setStatus("loading");
     try {
-      await axios.post(`${API_URL}/auth/forgot-password`, { email });
+      await API.post(`/auth/forgot-password`, { email });
       navigate(`/verify-reset-otp?email=${encodeURIComponent(email)}`);
     } catch (err: any) {
       setStatus("error");

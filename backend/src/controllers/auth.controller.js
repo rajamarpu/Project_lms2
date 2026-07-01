@@ -14,7 +14,10 @@ const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
+    // Prevent self-registration as admin; cap to allowed roles only
+    const rawRole = req.body.role;
+    const role = rawRole === 'admin' ? 'user' : rawRole;
 
     const verificationOTP = generateOTP();
     const verificationOTPExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 mins

@@ -15,6 +15,7 @@ const envSchema = z.object({
   REDIS_PORT: z.string().transform(Number).default('6379'),
   REDIS_PASSWORD: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
+  GROQ_API_KEY: z.string().optional(),
   BREVO_API_KEY: z.string().min(1),
   EMAIL_FROM: z.string().default('singhyash9631@gmail.com'),
 });

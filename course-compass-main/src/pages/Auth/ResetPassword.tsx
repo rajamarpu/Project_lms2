@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Lock, Eye, EyeOff, CheckCircle2, Sparkles } from "lucide-react";
-import axios from "axios";
+import API from "@/api/client";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 

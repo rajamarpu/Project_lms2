@@ -59,6 +59,32 @@ const Login = () => {
           </p>
         </div>
 
+        {/* Development Test Credentials Banner */}
+        {import.meta.env.DEV && (
+          <div className="mb-6 p-4 rounded-xl border border-[#3B82F6]/30 bg-[#3B82F6]/5 shadow-[0_4px_20px_rgba(59,130,246,0.1)]">
+            <h3 className="text-xs font-bold text-[#3B82F6] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span>🔧</span> Development Test Credentials
+            </h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-background/80 p-2 rounded-lg border border-border/50">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase mb-0.5">Student Email</p>
+                <p className="font-mono text-foreground font-medium selection:bg-[#3B82F6]/20">student@uptoskills.com</p>
+              </div>
+              <div className="bg-background/80 p-2 rounded-lg border border-border/50">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase mb-0.5">Password</p>
+                <p className="font-mono text-foreground font-medium selection:bg-[#3B82F6]/20">student123</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm({ email: "student@uptoskills.com", password: "student123" })}
+              className="mt-3 w-full py-2 bg-[#3B82F6]/10 hover:bg-[#3B82F6]/20 text-[#3B82F6] text-xs font-bold rounded-lg transition-colors"
+            >
+              Autofill Credentials
+            </button>
+          </div>
+        )}
+
         {/* Card */}
         <div className="glass-card p-8 shadow-[0_0_60px_hsl(16_100%_60%/0.08)]">
           <form onSubmit={handleSubmit} className="space-y-5">

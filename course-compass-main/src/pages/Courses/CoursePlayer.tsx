@@ -3,6 +3,7 @@ import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowLeft, PlayCircle, FileText, CheckCircle, Loader2, ChevronRight, Lock, Award, Check, Clock } from "lucide-react";
 import { courseApi } from "@/api/course.api";
 import { useAuth } from "@/store/AuthContext";
+import { CELEBRITIES } from "@/lib/constants";
 import { toast } from "sonner";
 
 export default function CoursePlayer() {
@@ -22,7 +23,7 @@ export default function CoursePlayer() {
   const [mentorChangeOpen, setMentorChangeOpen] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState("");
   const [updatingMentor, setUpdatingMentor] = useState(false);
-  const celebrities = ["Virat Kohli", "Salman Khan", "Narendra Modi", "Sachin Tendulkar", "Hardik Pandya", "Virtual Mentor"];
+  const celebrities = CELEBRITIES;
 
   const fetchEnrollment = async () => {
     try {
